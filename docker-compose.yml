@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: vaultdrive-postgres
+    environment:
+      POSTGRES_USER: vaultdrive
+      POSTGRES_PASSWORD: vaultdrivepass
+      POSTGRES_DB: vaultdrive_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+  redis:
+    image: redis:7
+    container_name: vaultdrive-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+
+volumes:
+  pgdata:
+  redisdata:

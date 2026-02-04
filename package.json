@@ -6,21 +6,32 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
-  },
-  "dependencies": {
-    "next": "16.1.6",
-    "react": "19.2.3",
-    "react-dom": "19.2.3"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.1.6",
-    "tailwindcss": "^4",
-    "typescript": "^5"
-  }
+    "lint": "next lint",
+    "postinstall": "prisma generate --schema=prisma/schema.prisma",
+    "db:reset": "prisma migrate reset --force --schema=prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema=prisma/schema.prisma",
+    "db:generate": "prisma generate --schema=prisma/schema.prisma"
+},
+"dependencies": {
+"@prisma/adapter-pg": "^7.3.0",
+"@prisma/client": "6.16.0",
+"next": "16.1.6",
+"pg": "^8.18.0",
+"prisma": "6.16.0",
+"react": "19.2.3",
+"react-dom": "19.2.3"
+},
+"devDependencies": {
+"@prisma/config": "^7.3.0",
+"@tailwindcss/postcss": "^4",
+"@types/node": "^20",
+"@types/pg": "^8.16.0",
+"@types/react": "^19",
+"@types/react-dom": "^19",
+"dotenv": "^17.2.3",
+"eslint": "^9",
+"eslint-config-next": "16.1.6",
+"tailwindcss": "^4",
+"typescript": "^5"
+}
 }

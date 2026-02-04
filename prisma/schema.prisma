@@ -1,0 +1,39 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum FileKind {
+  FILE
+  FOLDER
+}
+
+enum ReplicationStatus {
+  PENDING
+  DONE
+  ERROR
+}
+
+model FileObject {
+  id                String             @id @default(cuid())
+  ownerId            String
+  kind               FileKind
+  folderPath         String
+  originalName       String
+  storedName         String
+  localPath          String
+  mimeType           String
+  sizeBytes          Int
+  cloudKey           String?
+  replicationStatus  ReplicationStatus @default(PENDING)
+  replicationError   String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@index([ownerId, createdAt])
+  @@index([ownerId, folderPath])
+}
