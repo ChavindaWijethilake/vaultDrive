@@ -1,0 +1,52 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vaultdrive-app
+    restart: always
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - vaultdrive_uploads:/app/uploads
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: vaultdrive-postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-vaultdrive}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-vaultdrivepass}
+      - POSTGRES_DB=${POSTGRES_DB:-vaultdrive_db}
+    ports:
+      - "5433:5432"
+    volumes:
+      - vaultdrive_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-vaultdrive} -d $${POSTGRES_DB:-vaultdrive_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: vaultdrive-redis
+    restart: always
+    volumes:
+      - vaultdrive_redisdata:/data
+    ports:
+      - "6380:6379"
+
+volumes:
+  vaultdrive_uploads:
+  vaultdrive_pgdata:
+  vaultdrive_redisdata:
