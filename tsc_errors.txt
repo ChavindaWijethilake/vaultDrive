@@ -1,6 +1,0 @@
-﻿app/api/download/[id]/route.ts(24,70): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string | number | boolean'.
-  Type 'null' is not assignable to type 'string | number | boolean'.
-app/api/files/route.ts(47,18): error TS18047: 'r.sizeBytes' is possibly 'null'.
-app/api/folders/[path]/route.ts(37,9): error TS2353: Object literal may only specify known properties, and 'deletedAt' does not exist in type 'FileObjectWhereInput'.
-app/api/folders/[path]/route.ts(60,9): error TS2353: Object literal may only specify known properties, and 'deletedAt' does not exist in type 'FileObjectWhereInput'.
-app/api/folders/[path]/route.ts(75,15): error TS2353: Object literal may only specify known properties, and 'deletedAt' does not exist in type '(Without<FileObjectUpdateInput, FileObjectUncheckedUpdateInput> & FileObjectUncheckedUpdateInput) | (Without<...> & FileObjectUpdateInput)'.
