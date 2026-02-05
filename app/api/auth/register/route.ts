@@ -1,27 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyPassword } from "@/lib/password";
+import { hashPassword } from "@/lib/password";
 import { createSession } from "@/lib/session";
 
 export async function POST(req: NextRequest) {
     try {
         const { email, password } = await req.json();
 
-        if (!email || !password) {
-            return NextResponse.json({ ok: false, error: "Missing credentials" }, { status: 400 });
+        if (!email || !password || password.length < 6) {
+            return NextResponse.json({ ok: false, error: "Invalid email or weak password" }, { status: 400 });
         }
 
-        const user = await prisma.user.findUnique({ where: { email } });
-        if (!user) {
-            // Dummy verification to resist timing attacks (conceptually)
-            // await verifyPassword("dummy", "dummy");
-            return NextResponse.json({ ok: false, error: "Invalid credentials" }, { status: 401 });
+        const existing = await prisma.user.findUnique({ where: { email } });
+        if (existing) {
+            return NextResponse.json({ ok: false, error: "Email already registered" }, { status: 400 });
         }
 
-        const valid = await verifyPassword(password, user.passwordHash);
-        if (!valid) {
-            return NextResponse.json({ ok: false, error: "Invalid credentials" }, { status: 401 });
-        }
+        const passwordHash = await hashPassword(password);
+        const user = await prisma.user.create({
+            data: {
+                email,
+                passwordHash,
+            },
+        });
 
         const { token, sessionCookieName, expiresAt } = await createSession(user.id);
 
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
 
         return res;
     } catch (e: any) {
-        console.error("Login error:", e);
+        console.error("Register error:", e);
         return NextResponse.json({ ok: false, error: "Internal error" }, { status: 500 });
     }
 }

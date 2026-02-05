@@ -5,7 +5,7 @@ import { requireAuth } from "@/lib/auth";
 import { jsonSafe } from "@/lib/serialize";
 
 export async function GET(req: NextRequest) {
-    const auth = requireAuth(req);
+    const auth = await requireAuth(req);
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
     const url = new URL(req.url);
@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-    const auth = requireAuth(req);
+    const auth = await requireAuth(req);
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
     try {
@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-    const auth = requireAuth(req);
+    const auth = await requireAuth(req);
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
     const url = new URL(req.url);

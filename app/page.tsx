@@ -37,7 +37,7 @@ function parentOf(path: string) {
 
 export default function HomePage() {
   const [authorized, setAuthorized] = useState<boolean | null>(null);
-  const [apiKeyInput, setApiKeyInput] = useState("");
+  // apiKeyInput removed
   const [loading, setLoading] = useState(false);
   const [globalError, setGlobalError] = useState("");
 
@@ -105,29 +105,35 @@ export default function HomePage() {
     }
   }
 
+  const [emailInput, setEmailInput] = useState("");
+  const [passwordInput, setPasswordInput] = useState("");
+  // Toggle between login and register
+  const [isRegistering, setIsRegistering] = useState(false);
+
   useEffect(() => {
     checkAuth();
   }, []);
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleAuth(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setGlobalError("");
+    const endpoint = isRegistering ? "/api/auth/register" : "/api/auth/login";
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ apiKey: apiKeyInput, ownerId: "user-1" }),
+        body: JSON.stringify({ email: emailInput, password: passwordInput }),
       });
       const data = await res.json();
       if (res.ok && data.ok) {
         setAuthorized(true);
         refresh("/");
       } else {
-        setGlobalError(data.error || "Login failed");
+        setGlobalError(data.error || "Auth failed");
       }
     } catch (e) {
-      setGlobalError("Login error");
+      setGlobalError("Auth error");
     } finally {
       setLoading(false);
     }
@@ -138,7 +144,8 @@ export default function HomePage() {
     setAuthorized(false);
     setFolders([]);
     setFiles([]);
-    setApiKeyInput("");
+    setEmailInput("");
+    setPasswordInput("");
   }
 
   async function refresh(path = currentFolder) {
@@ -316,21 +323,44 @@ export default function HomePage() {
   if (!authorized) {
     return (
       <div style={{ padding: 40, maxWidth: 400, margin: "0 auto", fontFamily: "sans-serif" }}>
-        <h1>Login to VaultDrive</h1>
-        <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <h1 style={{ textAlign: "center", marginBottom: 20 }}>{isRegistering ? "Register for VaultDrive" : "Login to VaultDrive"}</h1>
+        <form onSubmit={handleAuth} style={{ display: "flex", flexDirection: "column", gap: 15 }}>
           <label>
-            API Key:
+            Email:
             <input
-              type="password"
-              value={apiKeyInput}
-              onChange={(e) => setApiKeyInput(e.target.value)}
-              style={{ width: "100%", padding: 8, marginTop: 4 }}
+              type="email"
+              required
+              value={emailInput}
+              onChange={(e) => setEmailInput(e.target.value)}
+              style={{ width: "100%", padding: 10, marginTop: 4, borderRadius: 4, border: "1px solid #ccc" }}
             />
           </label>
-          <button type="submit" disabled={loading} style={{ padding: 10, cursor: "pointer" }}>
-            {loading ? "Logging in..." : "Login"}
+          <label>
+            Password:
+            <input
+              type="password"
+              required
+              minLength={6}
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              style={{ width: "100%", padding: 10, marginTop: 4, borderRadius: 4, border: "1px solid #ccc" }}
+            />
+          </label>
+          <button type="submit" disabled={loading} style={{ padding: 12, cursor: "pointer", background: "#007bff", color: "white", border: "none", borderRadius: 4, fontWeight: "bold" }}>
+            {loading ? (isRegistering ? "Registering..." : "Logging in...") : (isRegistering ? "Register" : "Login")}
           </button>
-          {globalError && <div style={{ color: "red", marginTop: 10 }}>{globalError}</div>}
+
+          <div style={{ textAlign: "center", marginTop: 10 }}>
+            <button
+              type="button"
+              onClick={() => { setIsRegistering(!isRegistering); setGlobalError(""); }}
+              style={{ background: "none", border: "none", color: "#007bff", textDecoration: "underline", cursor: "pointer" }}
+            >
+              {isRegistering ? "Already have an account? Login" : "Need an account? Register"}
+            </button>
+          </div>
+
+          {globalError && <div style={{ color: "red", marginTop: 10, textAlign: "center" }}>{globalError}</div>}
         </form>
       </div>
     );

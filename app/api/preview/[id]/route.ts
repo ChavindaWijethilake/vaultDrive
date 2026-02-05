@@ -1,84 +1,54 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
-import path from "path";
-import fs from "fs";
+import { safeResolveLocalPath, isPreviewable } from "@/lib/storage";
+import fs from "fs/promises";
 
-// Helper to stream file from disk
-function streamFile(path: string): ReadableStream {
-    const downloadStream = fs.createReadStream(path);
+export const runtime = "nodejs";
 
-    return new ReadableStream({
-        start(controller) {
-            downloadStream.on("data", (chunk: any) => controller.enqueue(chunk));
-            downloadStream.on("end", () => controller.close());
-            downloadStream.on("error", (error: Error) => controller.error(error));
-        },
-        cancel() {
-            if (!downloadStream.destroyed) downloadStream.destroy();
-        },
-    });
-}
-
-export async function GET(
-    req: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
-    const auth = requireAuth(req);
+export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+    const auth = await requireAuth(req);
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
-    const { id } = await params;
-
     try {
+        const { id } = await ctx.params;
+        const ownerId = auth.ownerId;
+
+        // Find row by id + ownerId + kind="FILE"
         const file = await prisma.fileObject.findFirst({
-            where: {
-                id,
-                ownerId: auth.ownerId,
-                kind: "FILE",
-            },
+            where: { id, ownerId, kind: "FILE" },
         });
 
         if (!file) {
-            return NextResponse.json({ ok: false, error: "File not found" }, { status: 404 });
+            return NextResponse.json({ ok: false, error: "File not found." }, { status: 404 });
         }
 
-        if (!file.localPath) {
-            return NextResponse.json({ ok: false, error: "File path missing" }, { status: 404 });
+        // Validate localPath is under uploads root
+        let absPath: string;
+        try {
+            absPath = safeResolveLocalPath(file.localPath);
+        } catch (e) {
+            return NextResponse.json({ ok: false, error: "Access denied: invalid file path." }, { status: 403 });
         }
 
-        const absPath = path.resolve(process.cwd(), file.localPath);
-        const uploadsRoot = path.join(process.cwd(), "uploads");
-        if (!absPath.startsWith(uploadsRoot)) {
-            return NextResponse.json({ ok: false, error: "Access denied" }, { status: 403 });
+        const fileBuf = await fs.readFile(absPath);
+        const filename = encodeURIComponent(file.originalName);
+
+        // If isPreviewable(mime): return response with inline, else attachment
+        // If the goal requires 400 not previewable, we implement that check.
+        // Prompt said: "If !isPreviewable(row.mimeType), return 400 with { ok:false, error:"Not previewable." }"
+        if (!isPreviewable(file.mimeType || "")) {
+            return NextResponse.json({ ok: false, error: "Not previewable." }, { status: 400 });
         }
 
-        if (!fs.existsSync(absPath)) {
-            return NextResponse.json({ ok: false, error: "File missing on disk" }, { status: 404 });
-        }
-
-        const stream = streamFile(absPath);
-        const headers = new Headers();
-
-        // Check for allowed inline types
-        const mime = file.mimeType || "application/octet-stream";
-        const isInline = mime.startsWith("image/") || mime === "application/pdf";
-        const disposition = isInline ? "inline" : "attachment";
-
-        headers.set("Content-Type", mime);
-
-        const safeName = file.originalName.replace(/["\\]/g, "");
-        const encodedName = encodeURIComponent(file.originalName);
-        headers.set("Content-Disposition", `${disposition}; filename="${safeName}"; filename*=UTF-8''${encodedName}`);
-
-        headers.set("Content-Length", file.sizeBytes.toString());
-        headers.set("Cache-Control", "no-store");
-
-        return new NextResponse(stream, {
-            status: 200,
-            headers,
+        return new NextResponse(fileBuf, {
+            headers: {
+                "Content-Type": file.mimeType || "application/octet-stream",
+                "Content-Disposition": `inline; filename="${filename}"`,
+            },
         });
     } catch (e: any) {
-        console.error("Preview error:", e);
-        return NextResponse.json({ ok: false, error: "Internal server error" }, { status: 500 });
+        console.error("Preview API error:", e);
+        return NextResponse.json({ ok: false, error: e?.message ?? "Unknown error" }, { status: 500 });
     }
 }

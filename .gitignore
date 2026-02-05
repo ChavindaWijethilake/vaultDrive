@@ -54,8 +54,18 @@ coverage/
 # ===============================
 # Uploads / User-generated files
 # ===============================
+# ===============================
+# Uploads / User-generated files
+# ===============================
 uploads/
-uploads/*
+
+# ===============================
+# Logs & backups
+# ===============================
+lint_log.txt
+prisma.config.ts.bak
+*.bak
+*.log
 
 # ===============================
 # Vercel

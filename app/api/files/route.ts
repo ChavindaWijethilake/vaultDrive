@@ -5,7 +5,7 @@ import { requireAuth } from "@/lib/auth";
 import { jsonSafe } from "@/lib/serialize";
 
 export async function GET(req: NextRequest) {
-  const auth = requireAuth(req);
+  const auth = await requireAuth(req);
   if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
   try {
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
       take: 300,
     });
 
-    const files = rows.map((r) => ({
+    const files = rows.map((r: any) => ({
       id: r.id,
       originalName: r.originalName,
       storedName: r.storedName,

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
-import path from "path";
+import { safeResolveLocalPath } from "@/lib/storage";
 import fs from "fs";
 
 // Helper to stream file from disk
@@ -25,7 +25,7 @@ export async function GET(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    const auth = requireAuth(req);
+    const auth = await requireAuth(req);
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
     const { id } = await params;
@@ -48,12 +48,11 @@ export async function GET(
         }
 
         // Resolve absolute path. FileObject.localPath is relative to process.cwd()
-        const absPath = path.resolve(process.cwd(), file.localPath);
-
-        // Security check: ensure file is within uploads directory
-        const uploadsRoot = path.join(process.cwd(), "uploads");
-        if (!absPath.startsWith(uploadsRoot)) {
-            console.error("Security alert: Attempted traversal", absPath);
+        let absPath: string;
+        try {
+            absPath = safeResolveLocalPath(file.localPath);
+        } catch (e) {
+            console.error("Security alert: Attempted traversal", file.localPath);
             return NextResponse.json({ ok: false, error: "Access denied" }, { status: 403 });
         }
 

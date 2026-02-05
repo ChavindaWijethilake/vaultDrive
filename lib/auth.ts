@@ -1,59 +1,29 @@
 import { NextRequest } from "next/server";
-import crypto from "crypto";
+import { validateRequest } from "@/lib/session";
 
-const COOKIE_NAME = "vd_session";
-
-function secret() {
-  return process.env.API_KEY || "";
-}
-
-function hmac(data: string) {
-  return crypto.createHmac("sha256", secret()).update(data).digest("hex");
-}
-
-export function createSessionToken(payload: { ownerId: string }) {
-  const body = Buffer.from(JSON.stringify({ ...payload, iat: Date.now() }), "utf8").toString("base64url");
-  const sig = hmac(body);
-  return `${body}.${sig}`;
-}
-
-export function verifySessionToken(token?: string | null) {
-  if (!token) return null;
-  const [body, sig] = token.split(".");
-  if (!body || !sig) return null;
-  const expected = hmac(body);
-  try {
-    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
-    const decoded = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
-    if (!decoded?.ownerId) return null;
-    return { ownerId: String(decoded.ownerId) };
-  } catch {
-    return null;
-  }
-}
-
-export function requireAuth(req: NextRequest) {
-  if (!process.env.API_KEY) {
-    return { ok: false as const, status: 500, error: "API_KEY is missing in .env" };
+export async function requireAuth(req: NextRequest): Promise<
+  | { ok: true; ownerId: string }
+  | { ok: false; status: number; error: string }
+> {
+  // 1. Check Session Cookie
+  const sessionData = await validateRequest(req);
+  if (sessionData) {
+    return { ok: true, ownerId: sessionData.user.id };
   }
 
-  const cookie = req.cookies.get(COOKIE_NAME)?.value;
-  const session = verifySessionToken(cookie);
-  if (session) return { ok: true as const, ownerId: session.ownerId };
+  // 2. Fallback: API Key (for backward compatibility/admin scripts)
+  const authHeader = req.headers.get("authorization");
+  const apiKeyHeader = req.headers.get("x-api-key");
+  const providedKey = apiKeyHeader || (authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : null);
 
-  const key = req.headers.get("x-api-key");
-  if (key && key === process.env.API_KEY) {
-    const ownerId = req.headers.get("x-owner-id") || "local-user";
-    return { ok: true as const, ownerId };
+  // If no API key configured in env, strictly require session
+  const validKey = process.env.API_KEY;
+
+  // If user provided a KEY, check it
+  if (providedKey && validKey && providedKey === validKey) {
+    // Legacy/Admin access: assume "admin" owner
+    return { ok: true, ownerId: "admin" };
   }
 
-  return { ok: false as const, status: 401, error: "Unauthorized, please login." };
+  return { ok: false, status: 401, error: "Unauthorized" };
 }
-
-export const sessionCookie = {
-  name: COOKIE_NAME,
-  httpOnly: true,
-  sameSite: "lax" as const,
-  secure: process.env.NODE_ENV === "production",
-  path: "/",
-};
