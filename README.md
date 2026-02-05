@@ -77,6 +77,42 @@ git tag v1.0.0
 git push origin main --tags
 ```
 
+## Publishing to Git (Optional)
+
+If you want to publish this repository to GitHub/GitLab:
+```bash
+# Check current remotes
+git remote -v
+
+# Add your remote repository
+git remote add origin <your-repo-url>
+
+# Push code and tags
+git push -u origin main
+git push origin --tags
+```
+
+## Final Verification
+
+Before deploying to production, verify everything works:
+```bash
+# 1. Local build check
+npm run build
+
+# 2. Clean production boot
+docker compose -f docker-compose.prod.yml down -v
+docker compose -f docker-compose.prod.yml up -d --build
+
+# 3. Verify migrations
+docker compose -f docker-compose.prod.yml logs -f migrate
+
+# 4. Verify app startup
+docker compose -f docker-compose.prod.yml logs -f app
+
+# 5. Test health endpoint
+curl http://localhost:3001/api/health
+```
+
 ## Troubleshooting
 - **Database Reset**:
   - Dev: `npx prisma migrate reset`
