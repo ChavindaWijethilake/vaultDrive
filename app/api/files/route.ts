@@ -5,27 +5,35 @@ import { requireAuth } from "@/lib/auth";
 import { jsonSafe } from "@/lib/serialize";
 
 export async function GET(req: NextRequest) {
-  const auth = await requireAuth(req);
+  const auth = await requireAuth();
   if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
   try {
     const url = new URL(req.url);
     const folder = normalizePath(url.searchParams.get("folder") ?? "/");
     const search = String(url.searchParams.get("search") ?? "").trim();
+    const page = parseInt(url.searchParams.get("page") ?? "1", 10) || 1;
+    const limit = parseInt(url.searchParams.get("limit") ?? "20", 10) || 20;
     const ownerId = auth.ownerId;
 
-    const rows = await prisma.fileObject.findMany({
-      where: {
-        ownerId,
-        kind: "FILE",
-        folderPath: folder,
-        ...(search
-          ? { originalName: { contains: search, mode: "insensitive" } }
-          : {}),
-      },
-      orderBy: { createdAt: "desc" },
-      take: 300,
-    });
+    const where = {
+      ownerId,
+      kind: "FILE" as const,
+      ...(search
+        ? { originalName: { contains: search, mode: "insensitive" as const } }
+        : { folderPath: folder }),
+    };
+
+    // Parallelize count and data fetch
+    const [total, rows] = await Promise.all([
+      prisma.fileObject.count({ where }),
+      prisma.fileObject.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+    ]);
 
     const files = rows.map((r: any) => ({
       id: r.id,
@@ -38,8 +46,18 @@ export async function GET(req: NextRequest) {
       downloadUrl: `/api/download/${encodeURIComponent(r.id)}`,
     }));
 
-    return NextResponse.json(jsonSafe({ ok: true, files }));
+    return NextResponse.json(jsonSafe({
+      ok: true,
+      files,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    }));
   } catch (e: any) {
+    console.error("Files list error:", e);
     return NextResponse.json({ ok: false, error: e?.message ?? "Unknown error" }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { useSession, signIn, signOut } from "next-auth/react";
 
 type FolderRow = {
   id: string;
@@ -19,6 +20,13 @@ type FileRow = {
   downloadUrl: string;
 };
 
+type Pagination = {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
 function normalizePath(p: string) {
   if (!p) return "/";
   let s = p.trim().replace(/\\/g, "/");
@@ -27,17 +35,8 @@ function normalizePath(p: string) {
   return s;
 }
 
-function parentOf(path: string) {
-  const p = normalizePath(path);
-  if (p === "/") return "/";
-  const idx = p.lastIndexOf("/");
-  if (idx === 0) return "/";
-  return p.slice(0, idx);
-}
-
 export default function HomePage() {
-  const [authorized, setAuthorized] = useState<boolean | null>(null);
-  // apiKeyInput removed
+  const { data: session, status } = useSession();
   const [loading, setLoading] = useState(false);
   const [globalError, setGlobalError] = useState("");
 
@@ -46,149 +45,122 @@ export default function HomePage() {
   const [files, setFiles] = useState<FileRow[]>([]);
   const [listLoading, setListLoading] = useState(false);
 
-  const [file, setFile] = useState<File | null>(null);
+  const [pagination, setPagination] = useState<Pagination>({ total: 0, page: 1, limit: 10, totalPages: 0 });
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [newFolderName, setNewFolderName] = useState("");
 
-  // Search state
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  // Rename / Move state
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
-
   const [movingId, setMovingId] = useState<string | null>(null);
   const [moveValue, setMoveValue] = useState("");
 
+  const [emailInput, setEmailInput] = useState("");
+  const [passwordInput, setPasswordInput] = useState("");
+  const [isRegistering, setIsRegistering] = useState(false);
+
+  // Drag & Drop
+  const [isDragging, setIsDragging] = useState(false);
+
   // Helpers
-  function formatSize(bytes: number) {
+  const formatSize = (bytes: number) => {
     if (bytes === 0) return "0 B";
     const k = 1024;
     const sizes = ["B", "KB", "MB", "GB", "TB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
-  }
+  };
 
-  function formatDate(iso: string) {
-    if (!iso) return "";
-    return new Date(iso).toLocaleString();
-  }
+  const formatDate = (iso: string) => {
+    if (!iso || iso === "0" || new Date(iso).getTime() === 0) return "Implicit";
+    return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  };
 
-  // Debounce search
   useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearch(searchTerm);
-    }, 300);
+    const handler = setTimeout(() => setDebouncedSearch(searchTerm), 300);
     return () => clearTimeout(handler);
   }, [searchTerm]);
 
-  // Check auth status
-  async function checkAuth() {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/folders?parent=/");
-      if (res.status === 401 || res.status === 403) {
-        setAuthorized(false);
-      } else if (res.ok) {
-        setAuthorized(true);
-        // Load initial data
-        const data = await res.json();
-        if (data.ok) setFolders(data.folders || []);
-        fetchFiles("/", "");
-      } else {
-        setGlobalError("Failed to connect to server.");
-      }
-    } catch (e) {
-      setGlobalError("Network error.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const [emailInput, setEmailInput] = useState("");
-  const [passwordInput, setPasswordInput] = useState("");
-  // Toggle between login and register
-  const [isRegistering, setIsRegistering] = useState(false);
-
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  async function handleAuth(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setGlobalError("");
-    const endpoint = isRegistering ? "/api/auth/register" : "/api/auth/login";
-    try {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: emailInput, password: passwordInput }),
-      });
-      const data = await res.json();
-      if (res.ok && data.ok) {
-        setAuthorized(true);
-        refresh("/");
-      } else {
-        setGlobalError(data.error || "Auth failed");
-      }
-    } catch (e) {
-      setGlobalError("Auth error");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    setAuthorized(false);
-    setFolders([]);
-    setFiles([]);
-    setEmailInput("");
-    setPasswordInput("");
-  }
-
-  async function refresh(path = currentFolder) {
-    setGlobalError("");
+  const refresh = useCallback(async (path = currentFolder, page = currentPage) => {
+    if (status !== "authenticated") return;
     setListLoading(true);
-    const encoded = encodeURIComponent(path);
-    const searchEncoded = encodeURIComponent(debouncedSearch);
-
     try {
-      // Folders
-      const fRes = await fetch(`/api/folders?parent=${encoded}`);
+      const searchEncoded = encodeURIComponent(debouncedSearch);
+
+      // Fetch Folders
+      const fRes = await fetch(`/api/folders?parent=${encodeURIComponent(path)}&search=${searchEncoded}`);
       if (fRes.ok) {
-        const fData = await fRes.json();
-        if (fData.ok) setFolders(fData.folders);
+        const data = await fRes.json();
+        if (data.ok) setFolders(data.folders);
+      } else if (fRes.status === 401) {
+        signOut({ redirect: false });
       }
 
-      // Files
-      await fetchFiles(path, debouncedSearch);
+      // Fetch Files
+      const res = await fetch(`/api/files?folder=${encodeURIComponent(path)}&search=${searchEncoded}&page=${page}&limit=10`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok) {
+          setFiles(data.files);
+          setPagination(data.pagination);
+        }
+      }
     } catch (e) {
       console.error("Refresh error", e);
     } finally {
       setListLoading(false);
     }
-  }
+  }, [currentFolder, currentPage, debouncedSearch, status]);
 
-  async function fetchFiles(path: string, search: string) {
-    const encoded = encodeURIComponent(path);
-    const searchEncoded = encodeURIComponent(search);
-    const res = await fetch(`/api/files?folder=${encoded}&search=${searchEncoded}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.ok) setFiles(data.files);
-    }
-  }
-
-  // Reload when folder or search changes
   useEffect(() => {
-    if (authorized) {
-      refresh(currentFolder);
-    }
-  }, [currentFolder, authorized, debouncedSearch]);
+    refresh(currentFolder, currentPage);
+  }, [currentFolder, debouncedSearch, currentPage, refresh]);
 
-  async function createFolder() {
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setGlobalError("");
+
+    if (isRegistering) {
+      try {
+        const res = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: emailInput, password: passwordInput }),
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          // Now sign in
+          const authRes = await signIn("credentials", {
+            email: emailInput,
+            password: passwordInput,
+            redirect: false,
+          });
+          if (authRes?.error) setGlobalError(authRes.error);
+        } else {
+          setGlobalError(data.error || "Registration failed");
+        }
+      } catch {
+        setGlobalError("Connection error");
+      }
+    } else {
+      const authRes = await signIn("credentials", {
+        email: emailInput,
+        password: passwordInput,
+        redirect: false,
+      });
+      if (authRes?.error) {
+        setGlobalError(authRes.error === "CredentialsSignin" ? "Invalid email or password" : authRes.error);
+      }
+    }
+    setLoading(false);
+  };
+
+  const createFolder = async () => {
     if (!newFolderName.trim()) return;
     setLoading(true);
     try {
@@ -197,341 +169,354 @@ export default function HomePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ parentPath: currentFolder, name: newFolderName }),
       });
-      const data = await res.json();
-      if (data.ok) {
+      if ((await res.json()).ok) {
         setNewFolderName("");
-        refresh(currentFolder);
-      } else {
-        setGlobalError(data.error);
+        refresh();
       }
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  async function uploadFile() {
+  const uploadFile = async (file: File) => {
     if (!file) return;
     setLoading(true);
+    setUploadProgress(0);
     const fd = new FormData();
     fd.append("file", file);
     fd.append("folderPath", currentFolder);
+
     try {
+      // In a real app, use XMLHttpRequest or a library with progress support for real progress
+      // Mocking progress for UX
+      const interval = setInterval(() => {
+        setUploadProgress(p => p !== null && p < 90 ? p + 10 : p);
+      }, 200);
+
       const res = await fetch("/api/upload", { method: "POST", body: fd });
+      clearInterval(interval);
+      setUploadProgress(100);
+
       const data = await res.json();
       if (data.ok) {
-        setFile(null);
-        refresh(currentFolder);
+        setTimeout(() => setUploadProgress(null), 1000);
+        refresh();
       } else {
-        setGlobalError(data.error);
+        setGlobalError(data.error || "Upload failed");
+        setUploadProgress(null);
       }
+    } catch {
+      setGlobalError("Upload connection error");
+      setUploadProgress(null);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  async function deleteFile(id: string) {
-    if (!confirm("Are you sure you want to delete this file?")) return;
+  const deleteItem = async (type: "file" | "folder", idOrPath: string) => {
+    if (!confirm(`Delete this ${type}?`)) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/files/${id}`, { method: "DELETE" });
-      const data = await res.json();
-      if (data.ok) {
-        refresh(currentFolder);
-      } else {
-        setGlobalError(data.error);
-      }
+      const url = type === "file" ? `/api/files/${idOrPath}` : `/api/folders?path=${encodeURIComponent(idOrPath)}`;
+      const res = await fetch(url, { method: "DELETE" });
+      if ((await res.json()).ok) refresh();
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  async function deleteFolder(path: string) {
-    if (!confirm("Are you sure you want to delete this folder and all its contents?")) return;
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/folders?path=${encodeURIComponent(path)}`, { method: "DELETE" });
-      const data = await res.json();
-      if (data.ok) {
-        refresh(currentFolder);
-      } else {
-        setGlobalError(data.error);
-      }
-    } finally {
-      setLoading(false);
+  const handleRename = async (id: string) => {
+    if (!renameValue.trim()) {
+      setRenamingId(null);
+      return;
     }
-  }
-
-  async function handleRename(id: string) {
-    if (!renameValue.trim()) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/files/${id}/rename`, {
-        method: "POST",
+      const res = await fetch(`/api/files/${id}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ newName: renameValue })
       });
-      const data = await res.json();
-      if (data.ok) {
+      if ((await res.json()).ok) {
         setRenamingId(null);
-        setRenameValue("");
-        refresh(currentFolder);
-      } else {
-        setGlobalError(data.error);
+        refresh();
       }
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  async function handleMove(id: string) {
-    const target = normalizePath(moveValue);
+  const handleMove = async (id: string, path: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/files/${id}/move`, {
-        method: "POST",
+      const res = await fetch(`/api/files/${id}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ folderPath: target })
+        body: JSON.stringify({ newFolderPath: normalizePath(path) })
       });
-      const data = await res.json();
-      if (data.ok) {
+      if ((await res.json()).ok) {
         setMovingId(null);
-        setMoveValue("");
-        refresh(currentFolder);
-      } else {
-        setGlobalError(data.error);
+        refresh();
       }
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   const crumbs = useMemo(() => {
     const p = normalizePath(currentFolder);
-    if (p === "/") return [{ name: "Root", path: "/" }];
-    const parts = p.split("/").filter(Boolean);
-    const out: { name: string; path: string }[] = [{ name: "Root", path: "/" }];
+    const out = [{ name: "Cloud", path: "/" }];
+    if (p === "/") return out;
     let acc = "";
-    for (const part of parts) {
+    p.split("/").filter(Boolean).forEach(part => {
       acc += "/" + part;
       out.push({ name: part, path: acc });
-    }
+    });
     return out;
   }, [currentFolder]);
 
-  if (authorized === null) return <div style={{ padding: 20 }}>Checking session...</div>;
+  // Drag and Drop Effects
+  const onDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+  const onDragLeave = () => setIsDragging(false);
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) uploadFile(file);
+  };
 
-  if (!authorized) {
+  if (status === "loading") return <div className="flex items-center justify-center min-h-screen text-slate-400 font-medium">Authenticating...</div>;
+
+  if (status === "unauthenticated") {
     return (
-      <div style={{ padding: 40, maxWidth: 400, margin: "0 auto", fontFamily: "sans-serif" }}>
-        <h1 style={{ textAlign: "center", marginBottom: 20 }}>{isRegistering ? "Register for VaultDrive" : "Login to VaultDrive"}</h1>
-        <form onSubmit={handleAuth} style={{ display: "flex", flexDirection: "column", gap: 15 }}>
-          <label>
-            Email:
-            <input
-              type="email"
-              required
-              value={emailInput}
-              onChange={(e) => setEmailInput(e.target.value)}
-              style={{ width: "100%", padding: 10, marginTop: 4, borderRadius: 4, border: "1px solid #ccc" }}
-            />
-          </label>
-          <label>
-            Password:
-            <input
-              type="password"
-              required
-              minLength={6}
-              value={passwordInput}
-              onChange={(e) => setPasswordInput(e.target.value)}
-              style={{ width: "100%", padding: 10, marginTop: 4, borderRadius: 4, border: "1px solid #ccc" }}
-            />
-          </label>
-          <button type="submit" disabled={loading} style={{ padding: 12, cursor: "pointer", background: "#007bff", color: "white", border: "none", borderRadius: 4, fontWeight: "bold" }}>
-            {loading ? (isRegistering ? "Registering..." : "Logging in...") : (isRegistering ? "Register" : "Login")}
-          </button>
-
-          <div style={{ textAlign: "center", marginTop: 10 }}>
-            <button
-              type="button"
-              onClick={() => { setIsRegistering(!isRegistering); setGlobalError(""); }}
-              style={{ background: "none", border: "none", color: "#007bff", textDecoration: "underline", cursor: "pointer" }}
-            >
-              {isRegistering ? "Already have an account? Login" : "Need an account? Register"}
+      <div className="flex items-center justify-center min-h-screen p-6">
+        <div className="glass-card p-10 w-full max-w-md animate-fade-in shadow-2xl">
+          <h1 className="text-3xl font-bold mb-8 text-center bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
+            VaultDrive
+          </h1>
+          <form onSubmit={handleAuth} className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-2">Email Address</label>
+              <input type="email" required value={emailInput} onChange={e => setEmailInput(e.target.value)} className="w-full bg-slate-900/50 border-slate-700/50" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-2">Password</label>
+              <input type="password" required minLength={6} value={passwordInput} onChange={e => setPasswordInput(e.target.value)} className="w-full bg-slate-900/50 border-slate-700/50" />
+            </div>
+            <button type="submit" disabled={loading} className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-semibold shadow-lg shadow-blue-500/20">
+              {loading ? "Authenticating..." : (isRegistering ? "Create Account" : "Sign In")}
             </button>
-          </div>
-
-          {globalError && <div style={{ color: "red", marginTop: 10, textAlign: "center" }}>{globalError}</div>}
-        </form>
+            <p className="text-center text-sm text-slate-500 mt-6">
+              <button type="button" onClick={() => setIsRegistering(!isRegistering)} className="text-blue-400 hover:underline">
+                {isRegistering ? "Back to Login" : "Don't have an account? Sign Up"}
+              </button>
+            </p>
+            {globalError && <div className="text-red-400 text-center text-sm mt-4 p-3 bg-red-400/10 rounded-lg">{globalError}</div>}
+          </form>
+        </div>
       </div>
     );
   }
 
   return (
-    <main style={{ padding: 20, fontFamily: "sans-serif", maxWidth: 1000, margin: "0 auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h1>VaultDrive</h1>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <input
-            placeholder="Search files..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ padding: "6px 10px", borderRadius: 4, border: "1px solid #ccc" }}
-          />
-          <button onClick={handleLogout} style={{ padding: "6px 12px", cursor: "pointer" }}>Logout</button>
-        </div>
-      </div>
-
-      {globalError && (
-        <div style={{ background: "#ffebee", color: "#c62828", padding: "10px 15px", borderRadius: 4, marginBottom: 15, border: "1px solid #ef9a9a" }}>
-          <strong>Error:</strong> {globalError}
-          <button onClick={() => setGlobalError("")} style={{ float: "right", border: "none", background: "none", cursor: "pointer", fontSize: 16 }}>&times;</button>
-        </div>
-      )}
-
-      <div style={{ margin: "20px 0", background: "#f5f5f5", padding: 15, borderRadius: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 18, marginBottom: 10 }}>
-          <strong>Location:</strong>
-          {crumbs.map((c, i) => (
-            <span key={c.path} style={{ display: "flex", alignItems: "center" }}>
-              {i > 0 && <span style={{ margin: "0 5px", color: "#999" }}>/</span>}
-              <a
-                href="#"
-                onClick={(e) => { e.preventDefault(); setCurrentFolder(c.path); }}
-                style={{
-                  color: i === crumbs.length - 1 ? "#333" : "#007bff",
-                  textDecoration: i === crumbs.length - 1 ? "none" : "underline",
-                  fontWeight: i === crumbs.length - 1 ? "bold" : "normal",
-                  cursor: i === crumbs.length - 1 ? "default" : "pointer"
-                }}
-              >
-                {c.name}
-              </a>
-            </span>
-          ))}
+    <div className="flex min-h-screen">
+      {/* Sidebar */}
+      <aside className="w-64 bg-slate-900/40 backdrop-blur-xl border-r border-white/5 p-6 flex flex-col gap-8 hidden lg:flex">
+        <div className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent px-2">
+          VaultDrive
         </div>
 
-        {currentFolder !== "/" && (
-          <button
-            onClick={() => setCurrentFolder(parentOf(currentFolder))}
-            style={{
-              marginTop: 5,
-              padding: "8px 16px",
-              background: "#6c757d",
-              color: "white",
-              border: "none",
-              borderRadius: 4,
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 5
-            }}
-          >
-            ⬅ Back to Parent
+        <nav className="flex-1 space-y-2">
+          <button onClick={() => setCurrentFolder("/")} className="w-full text-left px-4 py-3 rounded-xl bg-blue-600/10 text-blue-400 font-medium">
+            📂 All Files
           </button>
-        )}
-      </div>
+          <button disabled className="w-full text-left px-4 py-3 rounded-xl text-slate-500 cursor-not-allowed">
+            ⭐️ Starred
+          </button>
+          <button disabled className="w-full text-left px-4 py-3 rounded-xl text-slate-500 cursor-not-allowed">
+            🗑️ Trash
+          </button>
+        </nav>
 
-      <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
-        <div style={{ border: "1px solid #ccc", padding: 10, borderRadius: 4 }}>
-          <h3>New Folder</h3>
-          <input
-            value={newFolderName}
-            onChange={e => setNewFolderName(e.target.value)}
-            placeholder="Folder Name"
-            style={{ marginRight: 10 }}
-          />
-          <button onClick={createFolder} disabled={loading}>Create</button>
+        <div className="glass-card p-4 space-y-3">
+          <div className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Storage Used</div>
+          <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+            <div className="h-full bg-blue-500 w-[15%] shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
+          </div>
+          <div className="text-[10px] text-slate-400">1.2 GB of 25 GB used</div>
         </div>
 
-        <div style={{ border: "1px solid #ccc", padding: 10, borderRadius: 4 }}>
-          <h3>Upload File</h3>
-          <input type="file" onChange={e => setFile(e.target.files?.[0] || null)} style={{ marginRight: 10 }} />
-          <button onClick={uploadFile} disabled={loading || !file}>Upload</button>
-        </div>
-      </div>
+        <button onClick={() => signOut()} className="px-4 py-2 text-sm text-slate-500 hover:text-white transition-colors">
+          Logout Session
+        </button>
+      </aside>
 
-      <h2>Folders {listLoading && <span style={{ fontSize: "0.6em", color: "#666" }}>(Loading...)</span>}</h2>
-      {folders.length === 0 ? <p style={{ color: "#777" }}>No folders</p> : (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-          {folders.map(f => (
-            <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 0, border: "1px solid #006064", borderRadius: 4, background: "#e0f7fa", overflow: "hidden" }}>
-              <button
-                onClick={() => setCurrentFolder(f.path)}
-                style={{
-                  padding: "10px 15px",
-                  background: "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                  color: "#006064"
-                }}
-              >
-                📁 {f.name}
-              </button>
-              <button
-                onClick={() => deleteFolder(f.path)}
-                disabled={loading}
-                style={{
-                  padding: "10px",
-                  border: "none",
-                  borderLeft: "1px solid #006064",
-                  background: "rgba(255,0,0,0.1)",
-                  color: "#c62828",
-                  cursor: "pointer"
-                }}
-                title="Delete Folder"
-              >
-                &times;
+      {/* Main Content */}
+      <main
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+        className={`flex-1 flex flex-col h-screen overflow-hidden transition-colors ${isDragging ? "bg-blue-500/5 ring-2 ring-blue-500/20 inset-0" : ""}`}
+      >
+        {/* Header */}
+        <header className="h-20 border-b border-white/5 px-8 flex items-center justify-between bg-slate-900/20 backdrop-blur-md relative">
+          {listLoading && <div className="absolute bottom-0 left-0 h-[2px] bg-blue-500 animate-pulse w-full" />}
+
+          <div className="flex items-center gap-4 text-sm font-medium">
+            {crumbs.map((c, i) => (
+              <span key={c.path} className="flex items-center gap-3">
+                {i > 0 && <span className="text-slate-600">/</span>}
+                <button onClick={() => { setCurrentFolder(c.path); setCurrentPage(1); }} className={i === crumbs.length - 1 ? "text-slate-200" : "text-slate-500 hover:text-slate-300 transition-colors"}>
+                  {c.name}
+                </button>
+              </span>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-6">
+            <div className="relative w-80">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">🔍</span>
+              <input type="text" placeholder="Search your vault..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 h-10 bg-white/5 border-white/10 text-sm" />
+            </div>
+            <div className="flex gap-3">
+              <label className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg cursor-pointer transition-all shadow-lg shadow-blue-500/10 text-sm font-medium">
+                <span>{uploadProgress !== null ? `Uploading ${uploadProgress}%` : "Upload"}</span>
+                <input type="file" className="hidden" onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) uploadFile(file);
+                }} />
+              </label>
+              <button onClick={() => { const n = prompt("Folder name:"); if (n) { setNewFolderName(n); createFolder(); } }} className="flex items-center px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-all text-sm font-medium">
+                Folder+
               </button>
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+        </header>
 
-      <h2 style={{ marginTop: 30 }}>Files {listLoading && <span style={{ fontSize: "0.6em", color: "#666" }}>(Loading...)</span>}</h2>
-      {files.length === 0 ? <p style={{ color: "#777" }}>No files</p> : (
-        <ul style={{ listStyle: "none", padding: 0 }}>
-          {files.map(f => (
-            <li key={f.id} style={{ padding: "12px 10px", borderBottom: "1px solid #eee", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, background: movingId === f.id ? "#fff3e0" : "transparent" }}>
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: "1.2em" }}>📄</span>
-                  <a href={`/api/preview/${f.id}`} target="_blank" rel="noopener noreferrer" style={{ fontWeight: "bold", textDecoration: "none", color: "#007bff", fontSize: "1.05em" }}>
-                    {f.originalName}
-                  </a>
+        {/* Browser */}
+        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar relative">
+          {globalError && (
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center justify-between animate-fade-in">
+              <span className="text-red-400 text-sm font-medium">⚠️ {globalError}</span>
+              <button onClick={() => setGlobalError("")} className="text-red-400/50 hover:text-red-400">&times;</button>
+            </div>
+          )}
+
+          {/* Folders Section */}
+          <section className="mb-12">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold text-slate-200 tracking-tight">Folders</h2>
+              <span className="text-xs text-slate-500 font-medium">{folders.length} items</span>
+            </div>
+            {folders.length === 0 ? (
+              <div className="h-24 flex items-center justify-center border-2 border-dashed border-white/5 rounded-2xl text-slate-600 italic">No sub-folders here</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {folders.map(f => (
+                  <div key={f.id} className="glass-card group p-5 hover:bg-white/5 transition-all cursor-pointer relative">
+                    <div onClick={() => setCurrentFolder(f.path)} className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">📁</div>
+                      <div>
+                        <div className="font-semibold text-slate-200 truncate max-w-[120px]">{f.name}</div>
+                        <div className="text-xs text-slate-500">{formatDate(f.createdAt)}</div>
+                      </div>
+                    </div>
+                    <button onClick={() => deleteItem("folder", f.path)} className="absolute top-2 right-2 p-2 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">&times;</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Files Section */}
+          <section>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-6">
+                <h2 className="text-lg font-bold text-slate-200 tracking-tight">Recent Files</h2>
+                <div className="flex items-center gap-2 p-1 bg-white/5 rounded-lg border border-white/5">
+                  <button className="px-3 py-1 bg-blue-600 rounded-md text-xs font-semibold">List</button>
+                  <button disabled className="px-3 py-1 text-slate-500 text-xs">Grid</button>
                 </div>
-                <span style={{ color: "#666", fontSize: "0.85em", marginTop: 4, marginLeft: 30 }}>
-                  {formatSize(f.sizeBytes)} • {formatDate(f.createdAt)}
-                </span>
               </div>
+              <span className="text-xs text-slate-500 font-medium">Page {currentPage} of {pagination.totalPages}</span>
+            </div>
 
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                {renamingId === f.id ? (
-                  <>
-                    <input value={renameValue} onChange={e => setRenameValue(e.target.value)} placeholder="New Name" style={{ padding: "6px 8px", borderRadius: 4, border: "1px solid #ccc" }} autoFocus />
-                    <button onClick={() => handleRename(f.id)} disabled={loading} style={{ background: "#4caf50", color: "white", border: "none", padding: "6px 12px", borderRadius: 4, cursor: "pointer" }}>Save</button>
-                    <button onClick={() => setRenamingId(null)} style={{ background: "#9e9e9e", color: "white", border: "none", padding: "6px 12px", borderRadius: 4, cursor: "pointer" }}>Cancel</button>
-                  </>
-                ) : movingId === f.id ? (
-                  <>
-                    <input value={moveValue} onChange={e => setMoveValue(e.target.value)} placeholder="/target/path" style={{ padding: "6px 8px", borderRadius: 4, border: "1px solid #ccc" }} autoFocus />
-                    <button onClick={() => handleMove(f.id)} disabled={loading} style={{ background: "#2196f3", color: "white", border: "none", padding: "6px 12px", borderRadius: 4, cursor: "pointer" }}>Move</button>
-                    <button onClick={() => setMovingId(null)} style={{ background: "#9e9e9e", color: "white", border: "none", padding: "6px 12px", borderRadius: 4, cursor: "pointer" }}>Cancel</button>
-                  </>
-                ) : (
-                  <>
-                    <a href={`/api/preview/${f.id}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", color: "#333", border: "1px solid #ccc", padding: "5px 10px", borderRadius: 4, fontSize: "0.9em", background: "white" }}>Preview</a>
-                    <a href={`/api/download/${f.id}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", color: "#333", border: "1px solid #ccc", padding: "5px 10px", borderRadius: 4, fontSize: "0.9em", background: "white" }}>Download</a>
-                    <button onClick={() => { setRenamingId(f.id); setRenameValue(f.originalName); }} disabled={loading} style={{ cursor: "pointer", border: "1px solid #ccc", background: "white", padding: "5px 10px", borderRadius: 4 }}>Rename</button>
-                    <button onClick={() => { setMovingId(f.id); setMoveValue(f.folderPath); }} disabled={loading} style={{ cursor: "pointer", border: "1px solid #ccc", background: "white", padding: "5px 10px", borderRadius: 4 }}>Move</button>
-                    <button onClick={() => deleteFile(f.id)} disabled={loading} style={{ color: "white", background: "#f44336", border: "none", padding: "5px 10px", borderRadius: 4, cursor: "pointer" }}>Delete</button>
-                  </>
-                )}
+            <div className="glass-card overflow-hidden">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-white/5 text-slate-500 font-semibold bg-white/5">
+                    <th className="px-6 py-4">Name</th>
+                    <th className="px-6 py-4">Size</th>
+                    <th className="px-6 py-4">Created</th>
+                    <th className="px-6 py-4"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {files.length === 0 ? (
+                    <tr><td colSpan={4} className="px-6 py-20 text-center text-slate-600 italic">This folder is empty</td></tr>
+                  ) : (
+                    files.map(f => (
+                      <tr key={f.id} className="hover:bg-white/[0.02] group transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-4">
+                            <span className="text-xl">📄</span>
+                            <div className="flex flex-col">
+                              {renamingId === f.id ? (
+                                <input autoFocus value={renameValue} onChange={e => setRenameValue(e.target.value)} onBlur={() => handleRename(f.id)} className="bg-slate-900 border-indigo-500 h-8" />
+                              ) : (
+                                <a href={`/api/preview/${f.id}`} target="_blank" className="font-semibold text-slate-200 hover:text-blue-400 transition-colors">{f.originalName}</a>
+                              )}
+                              <span className="text-[10px] text-slate-600 font-mono tracking-tighter uppercase">{f.mimeType.split("/")[1] || "File"}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-slate-400">{formatSize(f.sizeBytes)}</td>
+                        <td className="px-6 py-4 text-slate-400">{formatDate(f.createdAt)}</td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {movingId === f.id ? (
+                              <div className="flex items-center gap-2">
+                                <input autoFocus placeholder="Target path..." value={moveValue} onChange={e => setMoveValue(e.target.value)} className="bg-slate-900 border-indigo-500 h-8 text-xs w-32" />
+                                <button onClick={() => handleMove(f.id, moveValue)} className="text-blue-400 text-xs hover:underline">Go</button>
+                                <button onClick={() => setMovingId(null)} className="text-slate-500 text-xs hover:underline">X</button>
+                              </div>
+                            ) : (
+                              <>
+                                <a href={`/api/download/${f.id}`} className="p-2 hover:bg-white/5 rounded-lg text-slate-400 hover:text-white" title="Download">⬇️</a>
+                                <button onClick={() => { setMovingId(f.id); setMoveValue(f.folderPath); }} className="p-2 hover:bg-white/5 rounded-lg text-slate-400 hover:text-white" title="Move">🚚</button>
+                                <button onClick={() => { setRenamingId(f.id); setRenameValue(f.originalName); }} className="p-2 hover:bg-white/5 rounded-lg text-slate-400 hover:text-white" title="Rename">✏️</button>
+                                <button onClick={() => deleteItem("file", f.id)} className="p-2 hover:bg-white/5 rounded-lg text-slate-400 hover:text-red-400" title="Delete">🗑️</button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination controls */}
+            {pagination.totalPages > 1 && (
+              <div className="mt-8 flex items-center justify-center gap-4">
+                <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="px-4 py-2 bg-slate-800 disabled:opacity-30 rounded-lg text-sm transition-all hover:bg-slate-700">Previous</button>
+                <div className="flex gap-2">
+                  {[...Array(pagination.totalPages)].map((_, i) => (
+                    <button key={i} onClick={() => setCurrentPage(i + 1)} className={`w-10 h-10 rounded-lg text-sm font-bold transition-all ${currentPage === i + 1 ? "bg-blue-600 text-white" : "bg-white/5 text-slate-400 hover:bg-white/10"}`}>
+                      {i + 1}
+                    </button>
+                  ))}
+                </div>
+                <button disabled={currentPage === pagination.totalPages} onClick={() => setCurrentPage(p => p + 1)} className="px-4 py-2 bg-slate-800 disabled:opacity-30 rounded-lg text-sm transition-all hover:bg-slate-700">Next</button>
               </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </main>
+            )}
+          </section>
+        </div>
+      </main>
+    </div>
   );
 }

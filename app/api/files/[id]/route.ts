@@ -1,19 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
-import path from "path";
-import fs from "fs/promises";
-import { deleteLocalFileIfExists } from "@/lib/storage";
+import { storage } from "@/src/storage";
+import { jsonSafe } from "@/lib/serialize";
 
 export const runtime = "nodejs";
 
-export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const auth = await requireAuth(req);
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireAuth();
   if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
   try {
-    const { id } = await ctx.params;
+    const { id } = await params;
     const ownerId = auth.ownerId;
+    const url = new URL(req.url);
+    const signed = url.searchParams.get("signed") === "true";
 
     const row = await prisma.fileObject.findFirst({
       where: { id, ownerId, kind: "FILE" },
@@ -21,16 +22,23 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 
     if (!row) return NextResponse.json({ ok: false, error: "Not found." }, { status: 404 });
 
-    // Only allow paths under project uploads directory
-    const abs = path.resolve(process.cwd(), row.localPath);
-    const uploadsRoot = path.resolve(process.cwd(), "uploads");
-    if (!abs.startsWith(uploadsRoot)) {
-      return NextResponse.json({ ok: false, error: "Invalid file path." }, { status: 400 });
+    if (!row.localPath) {
+      return NextResponse.json({ ok: false, error: "File path missing." }, { status: 404 });
     }
 
-    const fileBuf = await fs.readFile(abs);
+    if (signed) {
+      const signedUrl = await storage.getSignedDownloadUrl(row.localPath);
+      return NextResponse.json({ ok: true, url: signedUrl });
+    }
 
-    return new NextResponse(fileBuf, {
+    let stream: ReadableStream;
+    try {
+      stream = await storage.download(row.localPath);
+    } catch (e: any) {
+      return NextResponse.json({ ok: false, error: e.message || "File missing." }, { status: 404 });
+    }
+
+    return new NextResponse(stream, {
       headers: {
         "Content-Type": row.mimeType || "application/octet-stream",
         "Content-Disposition": `attachment; filename="${encodeURIComponent(row.originalName)}"`,
@@ -41,15 +49,42 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   }
 }
 
-export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const auth = await requireAuth(req);
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireAuth();
   if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
   try {
-    const { id } = await ctx.params;
+    const { id } = await params;
+    const body = await req.json();
+    const { newName, newFolderPath } = body;
+
+    const data: any = {};
+    if (newName !== undefined) data.originalName = String(newName).trim();
+    if (newFolderPath !== undefined) data.folderPath = String(newFolderPath).trim();
+
+    if (Object.keys(data).length === 0) {
+      return NextResponse.json({ ok: false, error: "No changes provided" }, { status: 400 });
+    }
+
+    await prisma.fileObject.update({
+      where: { id, ownerId: auth.ownerId },
+      data,
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    return NextResponse.json({ ok: false, error: e.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireAuth();
+  if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+
+  try {
+    const { id } = await params;
     const ownerId = auth.ownerId;
 
-    // Find row by id + ownerId + kind="FILE"
     const row = await prisma.fileObject.findFirst({
       where: { id, ownerId, kind: "FILE" },
     });
@@ -58,12 +93,10 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: stri
       return NextResponse.json({ ok: false, error: "File not found." }, { status: 404 });
     }
 
-    // Call deleteLocalFileIfExists(row.localPath)
-    // This function swallows ENOENT so it's safe if file missing.
-    // It returns void, so we don't check .ok
-    await deleteLocalFileIfExists(row.localPath);
+    if (row.localPath) {
+      await storage.delete(row.localPath);
+    }
 
-    // Delete DB row
     await prisma.fileObject.delete({
       where: { id },
     });

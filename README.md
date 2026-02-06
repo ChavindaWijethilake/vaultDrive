@@ -1,130 +1,84 @@
-# VaultDrive (V1)
-A secure, self-hosted file management system with user accounts, folders, and production-ready Docker deployment.
+# VaultDrive 🚢
 
-## Key Features
-- **User Authentication**: Email/Password login, sessions with HttpOnly cookies, and strict data isolation.
-- **File Management**: Upload (max 25MB), Download, Preview (Image/PDF), Rename, Move, Delete.
-- **Folder Support**: Nestable folders with proper navigation.
-- **Production Ready**: Docker Compose setup with automated migrations and secure defaults.
+VaultDrive is a production-grade, multi-user, cloud-agnostic file management platform built with Next.js, Auth.js, Prisma, and PostgreSQL. It delivers a secure, scalable, and premium storage experience tailored for private deployments.
 
-## Production Deployment (Docker)
+## 🚀 VaultDrive V1.2 — Production Hardening Release
 
-1.  **Deploy**:
-    ```bash
-    docker compose -f docker-compose.prod.yml down -v
-    docker compose -f docker-compose.prod.yml up -d --build
-    ```
-    Access at `http://localhost:3001`.
+VaultDrive V1.2 marks the transition from a prototype to a secure, production-ready platform. This release focuses on authentication, data isolation, scalable storage access, and a refined user experience.
 
-2.  **Verify**:
-    ```bash
-    # Check migration logs to confirm DB is ready
-    docker compose -f docker-compose.prod.yml logs -f migrate
-    
-    # Check app logs
-    docker compose -f docker-compose.prod.yml logs -f app
-    ```
+### 🔐 Security Architecture (Zero-Trust Multi-Tenancy)
+VaultDrive enforces strict isolation between users at every layer:
+- **Auth.js Integration**: JWT-based session management with Prisma Adapter for secure, scalable authentication.
+- **Edge Middleware Guard**: All protected routes are verified at the edge, preventing unauthenticated access before render.
+- **requireAuth() Pattern**: A unified backend guard ensures every API route is scoped by `ownerId`. Data leakage between users is structurally impossible.
+- **Secure Storage**: Path traversal protection and user-specific storage directories (Local) or Keys (S3).
 
-## Development Setup
-1.  **Install & Run**:
-    ```bash
-    npm install
-    # Start DB
-    docker compose up -d
-    # Reset DB (Dev only)
-    npx prisma migrate reset --schema=prisma/schema.prisma
-    # Run App
-    npm run dev
-    ```
-    Access at `http://localhost:3000`.
+### 📦 Intelligent Storage Layer
+The storage engine is fully cloud-aware and provider-agnostic:
+- **Presigned Downloads (S3 / MinIO)**: Files are streamed directly from object storage using temporary signed URLs — eliminating server bottlenecks.
+- **Recursive Cleanup Engine**: Deleting a folder guarantees all nested files are removed from the Database and the physical storage (Local Disk or S3-compatible storage).
+- **Provider Abstraction**: Switching storage providers requires only a single `.env` change.
 
-## Release Checklist (V1)
+### ✨ Premium UI / UX
+VaultDrive delivers a polished, desktop-grade experience:
+- **Drag & Drop Uploads**: Global drop zones with real-time progress tracking.
+- **Async Feedback**: Loading indicators, disabled states, and error toasts for all operations.
+- **Navigation**: Glassmorphic sidebar with breadcrumb-based folder traversal.
 
-### Clean Production Boot
+---
+
+## 🛠 Tech Stack
+- **Framework**: Next.js 14+ (App Router)
+- **Auth**: Auth.js (NextAuth v5)
+- **Database**: PostgreSQL with Prisma ORM
+- **Storage**: AWS SDK v3 (S3) / Node.js fs (Local)
+- **Styling**: Tailwind CSS (Glassmorphism)
+
+---
+
+## 🏁 Getting Started
+
+### 1. Environment Setup
+Rename `.env.example` to `.env` and fill in your credentials:
+```env
+AUTH_SECRET="..."        # Generate with 'npx auth secret'
+STORAGE_DRIVER="local"  # or "s3"
+DATABASE_URL="postgresql://..."
+```
+
+### 2. Local Development
 ```bash
-# Stop any dev services
-# Then run full production stack
-docker compose -f docker-compose.prod.yml down -v
+# 1. Start Services (PostgreSQL + MinIO)
+docker-compose up -d
+
+# 2. Setup Database
+npx prisma generate
+npx prisma db push
+
+# 3. Run App
+npm run dev
+```
+Access at `http://localhost:3000`.
+
+### 3. Production (Docker)
+```bash
+# Full production stack (Migrations + App)
 docker compose -f docker-compose.prod.yml up -d --build
-
-# Verify
-docker compose -f docker-compose.prod.yml logs -f migrate
-docker compose -f docker-compose.prod.yml logs -f app
 ```
+Access at `http://localhost:3001`.
 
-### URLs to Test
-- **App**: http://localhost:3001
-- **Health**: http://localhost:3001/api/health
+---
 
-### Multi-User Isolation Test
-- [ ] Register User A (`alice@example.com`)
-- [ ] Upload 2 files to `/`
-- [ ] Create folder `/docs`, move a file into it
-- [ ] Rename a file
-- [ ] Preview (if image/PDF), Download
-- [ ] Delete a file (confirm removal from UI and disk)
-- [ ] Logout, Login again (session persists)
-- [ ] Register User B (`bob@example.com`)
-- [ ] Verify: Bob sees empty drive (cannot see Alice's files)
+## 🔍 Verification Checklist (V1.2)
+- [x] **Auth & Isolation**: Unauthorized users redirected; User A cannot access User B’s files.
+- [x] **File Operations**: Drag-and-drop uploads; Rename & Move updates reflected immediately.
+- [x] **Signed URLs**: Verified direct streaming from S3 via presigned links.
+- [x] **Cleanup**: Recursive deletion confirmed across DB and Storage.
 
-## Release Steps
+---
 
-Once testing is complete, tag and push the release:
-```bash
-git add -A
-git commit -m "Release v1.0.0: auth, sessions, multi-user storage, docker prod, migrations, docs"
-git tag v1.0.0
-git push origin main --tags
-```
+## 🗺 Architecture
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for a deep dive into the system design, auth flows, and storage abstraction.
 
-## Publishing to Git (Optional)
-
-If you want to publish this repository to GitHub/GitLab:
-```bash
-# Check current remotes
-git remote -v
-
-# Add your remote repository
-git remote add origin <your-repo-url>
-
-# Push code and tags
-git push -u origin main
-git push origin --tags
-```
-
-## Final Verification
-
-Before deploying to production, verify everything works:
-```bash
-# 1. Local build check
-npm run build
-
-# 2. Clean production boot
-docker compose -f docker-compose.prod.yml down -v
-docker compose -f docker-compose.prod.yml up -d --build
-
-# 3. Verify migrations
-docker compose -f docker-compose.prod.yml logs -f migrate
-
-# 4. Verify app startup
-docker compose -f docker-compose.prod.yml logs -f app
-
-# 5. Test health endpoint
-curl http://localhost:3001/api/health
-```
-
-## Troubleshooting
-- **Database Reset**:
-  - Dev: `npx prisma migrate reset`
-  - Prod: `docker compose ... down -v` (deletes volumes!)
-- **"Prisma not found" in Docker**:
-  - Ensure `Dockerfile` migrate stage inherits from `builder`.
-  - Ensure `docker-compose.prod.yml` uses `npx prisma migrate deploy`.
-- **Build Errors**:
-  - Run `npm run build` locally to check for Type errors.
-
-## Storage Security
-- Uploads are stored in `./uploads/{userId}`.
-- Filenames are randomized on disk to prevent collisions.
-- Path traversal is blocked via `safeResolveLocalPath`.
-- Deleted files are removed from disk before database record deletion.
+## 📜 License
+MIT

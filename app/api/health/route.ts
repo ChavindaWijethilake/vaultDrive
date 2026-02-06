@@ -49,6 +49,7 @@ export async function GET() {
     time: new Date().toISOString(),
     db: "ok",
     redis: "skip",
+    storage: process.env.STORAGE_DRIVER || "local",
   };
 
   try {

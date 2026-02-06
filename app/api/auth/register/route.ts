@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { hashPassword } from "@/lib/password";
-import { createSession } from "@/lib/session";
+import bcrypt from "bcryptjs";
 
 export async function POST(req: NextRequest) {
     try {
@@ -16,26 +15,16 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ ok: false, error: "Email already registered" }, { status: 400 });
         }
 
-        const passwordHash = await hashPassword(password);
-        const user = await prisma.user.create({
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await prisma.user.create({
             data: {
                 email,
-                passwordHash,
+                password: hashedPassword,
             },
         });
 
-        const { token, sessionCookieName, expiresAt } = await createSession(user.id);
-
-        const res = NextResponse.json({ ok: true });
-        res.cookies.set(sessionCookieName, token, {
-            httpOnly: true,
-            sameSite: "lax",
-            secure: process.env.NODE_ENV === "production",
-            expires: expiresAt,
-            path: "/",
-        });
-
-        return res;
+        // After registration, we let the user log in via the standard login flow
+        return NextResponse.json({ ok: true });
     } catch (e: any) {
         console.error("Register error:", e);
         return NextResponse.json({ ok: false, error: "Internal error" }, { status: 500 });

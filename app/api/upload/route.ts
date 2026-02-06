@@ -5,8 +5,7 @@ import { normalizePath } from "@/lib/paths";
 import { checkRateLimit } from "@/lib/ratelimit";
 import crypto from "crypto";
 import path from "path";
-import fs from "fs/promises";
-import { ensureUploadsDir } from "@/lib/storage";
+import { storage } from "@/src/storage";
 
 export const runtime = "nodejs";
 
@@ -22,7 +21,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Too many uploads." }, { status: 429 });
   }
 
-  const auth = await requireAuth(req);
+  const auth = await requireAuth();
   if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
   try {
@@ -45,15 +44,8 @@ export async function POST(req: NextRequest) {
     // Unique stored name: timestamp + random + extension
     const storedName = `${Date.now()}-${crypto.randomBytes(8).toString("hex")}${ext}`;
 
-    // Keep disk path as uploads/{ownerId}/{storedName} only
-    // ensureUploadsDir returns appropriate absolute path
-    const ownerDir = await ensureUploadsDir(ownerId);
-
-    const absPath = path.join(ownerDir, storedName);
-    await fs.writeFile(absPath, bytes);
-
-    // localPath is relative to process.cwd() (the app root)
-    const localPath = path.relative(process.cwd(), absPath).replace(/\\/g, "/");
+    // Use storage abstraction to save the file
+    const localPath = await storage.upload(ownerId, storedName, bytes);
 
     const row = await prisma.fileObject.create({
       data: {
