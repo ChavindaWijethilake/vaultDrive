@@ -18,3 +18,8 @@
  prisma.config.ts.bak
  *.bak
  *.log
+
+.env
+.env.example
+.env.local
+.env.production
