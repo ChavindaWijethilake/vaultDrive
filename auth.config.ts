@@ -4,6 +4,8 @@ export const authConfig = {
     pages: {
         signIn: "/", // We use the home page as a combined landing/login
     },
+    session: { strategy: "jwt" },
+    secret: process.env.AUTH_SECRET,
     callbacks: {
         authorized({ auth, request: { nextUrl } }) {
             const isLoggedIn = !!auth?.user;

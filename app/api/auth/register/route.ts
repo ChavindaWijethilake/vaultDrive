@@ -4,7 +4,9 @@ import bcrypt from "bcryptjs";
 
 export async function POST(req: NextRequest) {
     try {
-        const { email, password } = await req.json();
+        const bodyText = await req.text();
+        console.log("Register raw body:", bodyText);
+        const { email, password } = JSON.parse(bodyText);
 
         if (!email || !password || password.length < 6) {
             return NextResponse.json({ ok: false, error: "Invalid email or weak password" }, { status: 400 });

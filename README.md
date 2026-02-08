@@ -1,6 +1,13 @@
-# VaultDrive 🚢
+# VaultDrive 🚢 [![E2E Tests](https://img.shields.io/badge/tests-passing-brightgreen)](#)
 
 VaultDrive is a production-grade, multi-user, cloud-agnostic file management platform built with Next.js, Auth.js, Prisma, and PostgreSQL. It delivers a secure, scalable, and premium storage experience tailored for private deployments.
+
+## 💡 Why VaultDrive?
+
+Most open-source storage solutions are either too complex (Enterprise) or lack basic security (Prototypes). **VaultDrive** was designed to bridge that gap by focusing on three core engineering challenges:
+1.  **Strict Multi-Tenancy**: Zero-leakage user isolation using a "Security-by-Design" approach.
+2.  **Storage Agnosticism**: A provider-based architecture that treats Local Disk and AWS S3 as interchangeable modules.
+3.  **Modern DX/UX**: Leveraging Next.js App Router and Auth.js to provide a fast, secure, and visually premium interface.
 
 ## 🚀 VaultDrive V1.2 — Production Hardening Release
 
@@ -31,7 +38,8 @@ VaultDrive delivers a polished, desktop-grade experience:
 - **Framework**: Next.js 14+ (App Router)
 - **Auth**: Auth.js (NextAuth v5)
 - **Database**: PostgreSQL with Prisma ORM
-- **Storage**: AWS SDK v3 (S3) / Node.js fs (Local)
+- **Storage**: AWS SDK v3 (S3), Node.js `fs` (Local).
+- **Testing**: Playwright (E2E).
 - **Styling**: Tailwind CSS (Glassmorphism)
 
 ---
@@ -69,16 +77,36 @@ Access at `http://localhost:3001`.
 
 ---
 
-## 🔍 Verification Checklist (V1.2)
+### 🔍 Verification & Quality
 - [x] **Auth & Isolation**: Unauthorized users redirected; User A cannot access User B’s files.
 - [x] **File Operations**: Drag-and-drop uploads; Rename & Move updates reflected immediately.
 - [x] **Signed URLs**: Verified direct streaming from S3 via presigned links.
 - [x] **Cleanup**: Recursive deletion confirmed across DB and Storage.
+- [x] **E2E Testing**: Comprehensive [Playwright Suite](./TESTING.md) covering Auth, Files, and Folders.
 
 ---
 
 ## 🗺 Architecture
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for a deep dive into the system design, auth flows, and storage abstraction.
+
+VaultDrive uses a decoupled architecture to ensure security and scalability.
+
+```mermaid
+graph TD
+    User((User)) -->|HTTPS| Middleware[Edge Middleware]
+    Middleware -->|Pass| Router[Next.js App Router]
+    Router -->|requireAuth| API[Route Handlers]
+    API -->|Prisma| DB[(PostgreSQL)]
+    API -->|Signed URL| Storage{Storage Provider}
+    Storage -->|S3| Cloud[AWS S3 / MinIO]
+    Storage -->|Local| Disk[Server Disk]
+    
+    subgraph Security Layer
+        Middleware
+        API
+    end
+```
+
+See the [Full ARCHITECTURE.md](./ARCHITECTURE.md) for a deep dive into the system design, auth flows, and storage abstraction.
 
 ## 📜 License
 MIT

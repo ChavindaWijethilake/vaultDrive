@@ -1,0 +1,120 @@
+﻿
+> vaultdrive@0.1.0 dev
+> next dev
+
+Γû▓ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://10.23.252.40:3000
+- Environments: .env
+
+Γ£ô Starting...
+node.exe : ΓÜá The 
+"middleware" file 
+convention is 
+deprecated. Please 
+use "proxy" 
+instead. Learn 
+more: https://nextjs
+.org/docs/messages/m
+iddleware-to-proxy
+At C:\Program Files\
+nodejs\npm.ps1:29 
+char:3
++   & $NODE_EXE 
+$NPM_CLI_JS $args
++   ~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~
+    + CategoryInfo  
+            : NotS  
+  pecified: (ΓÜá    
+ The "middle...l    
+eware-to-proxy:    
+String) [], Rem    
+oteException
+    + FullyQualifie 
+   dErrorId : Nati  
+  veCommandError
+ 
+Γ£ô Ready in 1621ms
+ GET / 200 in 881ms (compile: 602ms, proxy.ts: 113ms, render: 165ms)
+ GET / 200 in 45ms (compile: 7ms, proxy.ts: 8ms, render: 30ms)
+ GET / 200 in 115ms (compile: 9ms, proxy.ts: 13ms, render: 94ms)
+ GET /api/auth/session 200 in 1787ms (compile: 1764ms, render: 23ms)
+ GET /api/auth/session 200 in 19ms (compile: 11ms, render: 8ms)
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].user.findUnique()` invocation in
+E:\Projects\Web Application\CV\VaultDrive\vaultdrive\.next\dev\server\chunks\[root-of-the-server]__d3cf0deb._.js:92:159
+
+  89         status: 400
+  90     });
+  91 }
+ΓåÆ 92 const existing = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].user.findUnique(
+The column `User.name` does not exist in the current database.
+Register error: 
+Error [PrismaClientK
+nownRequestError]: 
+Invalid `__TURBOPACK
+__imported__module__
+$5b$project$5d2f$lib
+$2f$prisma$2e$ts__$5
+b$app$2d$route$5d$__
+$28$ecmascript$29$__
+["prisma"].user.find
+Unique()` 
+invocation in
+E:\Projects\Web Appl
+ication\CV\VaultDriv
+e\vaultdrive\.next\d
+ev\server\chunks\[ro
+ot-of-the-server]__d
+3cf0deb._.js:92:159
+
+  89         
+status: 400
+  90     });
+  91 }
+ΓåÆ 92 const 
+existing = await __T
+URBOPACK__imported__
+module__$5b$project$
+5d2f$lib$2f$prisma$2
+e$ts__$5b$app$2d$rou
+te$5d$__$28$ecmascri
+pt$29$__["prisma"].u
+ser.findUnique(
+The column 
+`User.name` does 
+not exist in the 
+current database.
+    at <unknown> (ap
+p\api\auth\register\
+route.ts:13:44)
+    at async POST (a
+pp\api\auth\register
+\route.ts:13:26)
+  11 |         }
+  12 |
+> 13 |         
+const existing = 
+await prisma.user.fi
+ndUnique({ where: { 
+email } });
+     |              
+                    
+          ^
+  14 |         if 
+(existing) {
+  15 |             
+return 
+NextResponse.json({ 
+ok: false, error: 
+"Email already 
+registered" }, { 
+status: 400 });
+  16 |         } {
+  code: 'P2022',
+  meta: [Object],
+  clientVersion: 
+'6.16.0'
+}
+ POST /api/auth/register 500 in 428ms (compile: 40ms, render: 388ms)

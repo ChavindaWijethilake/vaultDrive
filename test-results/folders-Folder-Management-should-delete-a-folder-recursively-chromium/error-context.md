@@ -1,0 +1,55 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]: VaultDrive
+      - navigation [ref=e5]:
+        - button "📂 All Files" [ref=e6]
+        - button "⭐️ Starred" [disabled] [ref=e7]
+        - button "🗑️ Trash" [disabled] [ref=e8]
+      - generic [ref=e9]:
+        - generic [ref=e10]: Storage Used
+        - generic [ref=e11]: 1.2 GB of 25 GB used
+      - button "Logout Session" [ref=e12]
+    - main [ref=e13]:
+      - generic [ref=e14]:
+        - button "Cloud" [ref=e17]
+        - generic [ref=e18]:
+          - generic [ref=e19]:
+            - text: 🔍
+            - textbox "Search your vault..." [ref=e20]
+          - generic [ref=e21]:
+            - generic [ref=e22]:
+              - text: Upload
+              - button "Upload" [ref=e23]
+            - button "Folder+" [active] [ref=e24]
+      - generic [ref=e25]:
+        - generic [ref=e26]:
+          - generic [ref=e27]:
+            - heading "Folders" [level=2] [ref=e28]
+            - generic [ref=e29]: 0 items
+          - generic [ref=e30]: No sub-folders here
+        - generic [ref=e31]:
+          - generic [ref=e32]:
+            - generic [ref=e33]:
+              - heading "Recent Files" [level=2] [ref=e34]
+              - generic [ref=e35]:
+                - button "List" [ref=e36]
+                - button "Grid" [disabled] [ref=e37]
+            - generic [ref=e38]: Page 1 of 0
+          - table [ref=e40]:
+            - rowgroup [ref=e41]:
+              - row "Name Size Created" [ref=e42]:
+                - columnheader "Name" [ref=e43]
+                - columnheader "Size" [ref=e44]
+                - columnheader "Created" [ref=e45]
+                - columnheader
+            - rowgroup [ref=e46]:
+              - row "This folder is empty" [ref=e47]:
+                - cell "This folder is empty" [ref=e48]
+  - button "Open Next.js Dev Tools" [ref=e54] [cursor=pointer]:
+    - img [ref=e55]
+  - alert [ref=e58]
+```
