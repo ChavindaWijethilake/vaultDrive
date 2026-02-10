@@ -10,7 +10,8 @@
     "postinstall": "npx prisma generate --schema=prisma/schema.prisma",
     "db:migrate:deploy": "npx prisma migrate deploy --schema=prisma/schema.prisma",
     "db:migrate:status": "npx prisma migrate status --schema=prisma/schema.prisma",
-    "db:generate": "npx prisma generate --schema=prisma/schema.prisma"
+    "db:generate": "npx prisma generate --schema=prisma/schema.prisma",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@auth/core": "^0.41.0",
@@ -30,6 +31,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.1",
     "@prisma/config": "^7.3.0",
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",

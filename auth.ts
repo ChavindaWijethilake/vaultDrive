@@ -9,7 +9,6 @@ import { z } from "zod";
 export const { handlers, auth, signIn, signOut } = NextAuth({
     ...authConfig,
     adapter: PrismaAdapter(prisma),
-    session: { strategy: "jwt" },
     providers: [
         Credentials({
             async authorize(credentials) {
