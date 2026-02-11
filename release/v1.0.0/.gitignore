@@ -1,0 +1,91 @@
+# ===============================
+# Node & Package Managers
+# ===============================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# ===============================
+# Next.js
+# ===============================
+.next/
+out/
+build/
+.vercel/
+
+# ===============================
+# Environment Variables
+# ===============================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.example
+
+
+# ===============================
+# Prisma
+# ===============================
+prisma/dev.db
+prisma/dev.db-journal
+
+# ===============================
+# Logs & Runtime
+# ===============================
+logs/
+*.log
+*.pid
+*.seed
+*.pid.lock
+
+# ===============================
+# OS / Editor Junk
+# ===============================
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# ===============================
+# TypeScript
+# ===============================
+*.tsbuildinfo
+
+# ===============================
+# Testing
+# ===============================
+coverage/
+.playwright/
+test-results/
+
+# ===============================
+# Docker
+# ===============================
+docker-data/
+docker-volumes/
+
+# ===============================
+# Uploads / Storage
+# ===============================
+uploads/
+storage/
+local-storage/
+
+# ===============================
+# Temporary Files
+# ===============================
+tmp/
+temp/
+.cache/
+
+# ===============================
+# Misc
+# ===============================
+*.pem
+*.key
