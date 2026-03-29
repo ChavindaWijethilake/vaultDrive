@@ -31,11 +31,9 @@
   --bg-app: #0B0F14;
   --bg-card: #111827;
   --bg-elevated: #161E2E;
-  --bg-input: #0F172A;
-
-  --border-default: rgba(255, 255, 255, 0.08);
-  --divider-subtle: rgba(255, 255, 255, 0.05);
-  --border-input: rgba(255, 255, 255, 0.12);
+  --divider-subtle: rgba(255, 255, 255, 0.03);
+  --border-input: rgba(255, 255, 255, 0.05);
+  --bg-input: rgba(255, 255, 255, 0.015);
 
   --text-primary: #E5E7EB;
   --text-secondary: #9CA3AF;
@@ -65,9 +63,9 @@
 
 * {
   box-sizing: border-box;
-  padding: 0;
   margin: 0;
 }
+
 
 body {
   background-color: var(--bg-app);
@@ -117,6 +115,13 @@ body::before {
   }
 }
 
+/* Strong Industrial Grid Background */
+.bg-grid-pattern {
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+
 /* Glassmorphism Refinement */
 .glass-card {
   background: var(--bg-card);
@@ -143,18 +148,53 @@ body::before {
   background: var(--bg-input);
   border: 1px solid var(--border-input);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  padding-left: 12px;
-  padding-right: 12px;
+  padding: 0 1.25rem;
   height: var(--input-h);
   border-radius: var(--radius-input);
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.premium-input:-webkit-autofill,
+.premium-input:-webkit-autofill:hover,
+.premium-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: white;
+  -webkit-box-shadow: 0 0 0px 1000px #111827 inset;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.premium-input::placeholder {
+  color: #4B5563;
+  font-weight: 400;
 }
 
 .premium-input:focus {
-  border-color: var(--accent-primary);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(16, 185, 129, 0.5);
   outline: none;
-  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.1);
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.05), inset 0 1px 1px rgba(255, 255, 255, 0.02);
+}
+
+.premium-card {
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.5),
+    inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-button {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+}
+
+.glass-button:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
 }
 
 label {
@@ -163,12 +203,6 @@ label {
   font-weight: 500;
   color: var(--text-secondary);
   margin-bottom: 6px;
-}
-
-.premium-input:focus {
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(59, 130, 246, 0.4);
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.05);
 }
 
 /* Prismatic Border Effect */
@@ -262,29 +296,36 @@ button:active {
 }
 
 .btn-primary {
-  background: var(--color-accent);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.9), rgba(5, 150, 105, 0.9));
   color: white;
   height: var(--btn-h-md);
   padding: 0 1.5rem;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .btn-primary:hover {
-  background: #2563eb;
-  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
-  transform: translateY(-1px);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 1), rgba(5, 150, 105, 1));
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
 }
 
 .btn-secondary {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  color: white;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: rgba(255, 255, 255, 0.9);
   height: var(--btn-h-md);
   padding: 0 1.5rem;
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  transform: translateY(-1px);
 }
 
 /* Animations */
