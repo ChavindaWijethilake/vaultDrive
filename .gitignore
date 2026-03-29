@@ -82,9 +82,12 @@ local-storage/
 tmp/
 temp/
 .cache/
+debug/
+backup/
 
 # ===============================
 # Misc
 # ===============================
 *.pem
 *.key
+credentials.txt

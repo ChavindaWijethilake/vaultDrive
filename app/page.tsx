@@ -63,6 +63,7 @@ export default function HomePage() {
   const [emailInput, setEmailInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Drag & Drop
   const [isDragging, setIsDragging] = useState(false);
@@ -296,72 +297,80 @@ export default function HomePage() {
 
   if (status === "unauthenticated") {
     return (
-      <main className="min-h-screen bg-[#0B0F14] relative overflow-hidden font-sans p-4 md:p-6 lg:p-8 selection:bg-emerald-500/30 text-[#E5E7EB]">
-        <div className="flex items-center justify-center min-h-[90vh] relative z-20">
-          {/* Dynamic Mesh Background */}
-          <div className="mesh-gradient opacity-40">
-            <div className="mesh-ball w-[800px] h-[800px] bg-emerald-600/10 -top-40 -left-40 animate-mesh-move" />
+      <main className="min-h-screen bg-[#0B0F14] relative overflow-hidden font-sans selection:bg-emerald-500/30 text-[#E5E7EB]">
+        <div className="absolute inset-0 bg-grid-pattern opacity-50 z-0 pointer-events-none"></div>
+        <div className="flex items-center justify-center min-h-screen relative z-20 px-4">
+          <div className="mesh-gradient opacity-60">
+            <div className="mesh-ball w-[800px] h-[800px] bg-emerald-600/10 -top-40 -left-60 animate-mesh-move" />
             <div className="mesh-ball w-[600px] h-[600px] bg-indigo-600/10 bottom-0 right-0 animate-mesh-move [animation-delay:-5s]" />
+            <div className="mesh-ball w-[500px] h-[500px] bg-cyan-600/10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-mesh-move [animation-delay:-3s]" />
           </div>
 
-          <div className="glass-card p-8 w-full max-w-[420px] animate-slide-up shadow-2xl relative z-10 border-white/[0.08] flex flex-col items-center">
-            <div className="flex flex-col items-center mb-6 group">
-              <div className="w-16 h-16 bg-emerald-600 rounded-lg flex items-center justify-center mb-6 shadow-xl shadow-emerald-500/10 group-hover:scale-105 transition-all duration-500">
-                <span className="text-3xl text-white">☁️</span>
+          <div className="glass-card premium-card p-[48px] sm:p-[72px] w-full max-w-[520px] animate-slide-up shadow-2xl relative z-10 border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] inset-ring-1 inset-ring-white/5" style={{ padding: '72px' }}>
+            <div className="flex flex-col items-center mb-12">
+              <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl flex items-center justify-center mb-5 shadow-lg shadow-emerald-500/25 ring-1 ring-white/10">
+                <span className="text-lg text-white drop-shadow-md">☁️</span>
               </div>
-              <h1 className="text-2xl font-bold text-[#E5E7EB] mb-2 leading-tight text-center">VaultDrive</h1>
-              <p className="text-[#9CA3AF] tracking-[0.2em] uppercase text-[9px] font-semibold text-center">Digital Fortress v2.0</p>
+              <h1 className="text-2xl font-bold text-white mb-2 tracking-tight">VaultDrive</h1>
+              <p className="text-[#6B7280] text-[11px] font-semibold uppercase tracking-[0.2em] opacity-80">Secure Cloud Storage</p>
             </div>
 
-            <form onSubmit={handleAuth} className="w-full space-y-5">
-              <div className="flex flex-col">
-                <label>Access Identity</label>
-                <input
-                  type="email"
-                  required
-                  placeholder="operator@vault.io"
-                  value={emailInput}
-                  onChange={e => setEmailInput(e.target.value)}
-                  className="premium-input w-full"
-                />
-              </div>
-              <div className="flex flex-col">
-                <label>Security Protocol</label>
-                <input
-                  type="password"
-                  required
-                  placeholder="••••••••••••"
-                  minLength={6}
-                  value={passwordInput}
-                  onChange={e => setPasswordInput(e.target.value)}
-                  className="premium-input w-full"
-                />
+            <form onSubmit={handleAuth} className="w-full space-y-[24px]">
+              <div className="flex flex-col gap-[10px]">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF] ml-1">Email Address</label>
+                <div className="relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#6B7280] pointer-events-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                  </div>
+                  <input type="email" required placeholder="name@company.com" value={emailInput} onChange={e => setEmailInput(e.target.value)} className="premium-input w-full pl-14! bg-[#0F172A]/90 focus:bg-[#0F172A]" />
+                </div>
               </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                style={{ backgroundColor: '#22C55E' }}
-                className="w-full h-11 text-white text-sm font-bold shadow-lg shadow-emerald-500/10 rounded-[6px] mt-2 hover:bg-[#16A34A] transition-colors"
-              >
-                {loading ? "Decrypting..." : (isRegistering ? "Initialize Node" : "Access Vault")}
-              </button>
-
-              <div className="relative py-4">
-                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/[0.05]"></div></div>
-                <div className="relative flex justify-center text-[9px] font-bold uppercase tracking-[0.3em] text-[#6B7280]"><span className="bg-[#111827] px-4">Gateway</span></div>
+              <div className="flex flex-col gap-[10px]">
+                <div className="flex justify-between items-center ml-1 pr-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF] mb-0">Password</label>
+                  {!isRegistering && (
+                    <a href="#" className="text-[10px] font-semibold text-emerald-500 hover:text-emerald-400 transition-colors">Forgot Password?</a>
+                  )}
+                </div>
+                <div className="relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#6B7280] pointer-events-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                  </div>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter password"
+                    value={passwordInput}
+                    onChange={e => setPasswordInput(e.target.value)}
+                    required
+                    className="premium-input w-full pl-14! pr-14! bg-[#0F172A]/90 focus:bg-[#0F172A]"
+                  /> <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#6B7280] hover:text-[#9CA3AF] transition-colors">
+                    {showPassword ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                    )}
+                  </button>
+                </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => { setIsRegistering(!isRegistering); setGlobalError(""); }}
-                className="w-full h-11 text-xs font-semibold text-[#9CA3AF] hover:text-[#E5E7EB] transition-all bg-white/5 rounded-[6px]"
-              >
-                {isRegistering ? "Switch to Secure Login" : "Initialize New Cluster"}
+              <div className="pt-6">
+                <button type="submit" disabled={loading} className="w-full h-12 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg transition-all active:scale-[0.98] shadow-lg shadow-emerald-500/20">
+                  {loading ? "Signing in..." : (isRegistering ? "Create Account" : "Sign In")}
+                </button>
+              </div>
+
+              <div className="relative py-8">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/[0.06]"></div></div>
+                <div className="relative flex justify-center text-[10px] font-bold uppercase tracking-[0.2em] text-[#9CA3AF]"><span className="bg-[#111827] px-8">or</span></div>
+              </div>
+
+              <button type="button" onClick={() => { setIsRegistering(!isRegistering); setGlobalError(""); }} className="w-full h-11 text-[10px] font-bold uppercase tracking-widest text-white transition-all bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg cursor-pointer">
+                {isRegistering ? "Back to Sign In" : "Create New Account"}
               </button>
 
               {globalError && (
-                <div className="text-red-400 text-center text-sm mt-6 p-4 bg-red-400/5 rounded-lg border border-red-400/10 animate-pulse-soft">
+                <div className="text-rose-400 text-center text-xs mt-4 p-3 bg-rose-500/10 rounded-lg border border-rose-500/20 backdrop-blur-sm">
                   {globalError}
                 </div>
               )}
@@ -382,18 +391,18 @@ export default function HomePage() {
       {/* Sidebar */}
       <aside className="w-[var(--sidebar-w)] h-[calc(100vh-4rem)] sticky top-8 bg-[#111827]/80 backdrop-blur-3xl border border-white/10 rounded-lg p-6 flex flex-col hidden lg:flex relative z-20 shrink-0 shadow-2xl">
         <div className="flex items-center gap-4 px-2 mb-10 group cursor-pointer" onClick={() => setCurrentFolder("/")}>
-          <div className="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center text-xl shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform duration-500">☁️</div>
+          <div className="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center text-lg shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform duration-500">☁️</div>
           <span className="text-xl font-bold text-white tracking-tight">VaultDrive</span>
         </div>
 
         <nav className="flex-1 space-y-2 overflow-y-auto no-scrollbar">
-          <div className="text-[10px] font-bold text-[#6B7280] uppercase tracking-[0.3em] mb-4 px-4">System Nodes</div>
+          <div className="text-[10px] font-bold text-[#6B7280] uppercase tracking-[0.3em] mb-4 px-4">Navigation</div>
           <button
             onClick={() => { setCurrentFolder("/"); setCurrentPage(1); }}
             className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg transition-all ${currentFolder === "/" ? "bg-white/[0.04] text-white ring-1 ring-white/10" : "text-[#9CA3AF] hover:text-white hover:bg-white/[0.01]"}`}
           >
             <span className={`text-xl ${currentFolder === "/" ? "opacity-100" : "opacity-30"}`}>📂</span>
-            <span className="text-[12px] font-semibold tracking-wide">Primary Drive</span>
+            <span className="text-[12px] font-semibold tracking-wide">My Files</span>
             {currentFolder === "/" && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(34,197,94,1)]"></div>}
           </button>
           <button
@@ -401,7 +410,7 @@ export default function HomePage() {
             className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg transition-all ${currentFolder === "/favorites" ? "bg-white/[0.04] text-white ring-1 ring-white/10" : "text-[#9CA3AF] hover:text-white hover:bg-white/[0.01]"}`}
           >
             <span className={`text-xl ${currentFolder === "/favorites" ? "opacity-100" : "opacity-30"}`}>⭐️</span>
-            <span className="text-[12px] font-semibold tracking-wide">Priority Sync</span>
+            <span className="text-[12px] font-semibold tracking-wide">Favorites</span>
             {currentFolder === "/favorites" && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(34,197,94,1)]"></div>}
           </button>
           <button
@@ -409,7 +418,7 @@ export default function HomePage() {
             className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg transition-all ${currentFolder === "/trash" ? "bg-white/[0.04] text-white ring-1 ring-white/10" : "text-[#9CA3AF] hover:text-white hover:bg-white/[0.01]"}`}
           >
             <span className={`text-xl ${currentFolder === "/trash" ? "opacity-100" : "opacity-30"}`}>🗑️</span>
-            <span className="text-[12px] font-semibold tracking-wide">Recycle Bin</span>
+            <span className="text-[12px] font-semibold tracking-wide">Trash</span>
             {currentFolder === "/trash" && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(34,197,94,1)]"></div>}
           </button>
         </nav>
@@ -418,7 +427,7 @@ export default function HomePage() {
         <div className="mt-auto pt-10 border-t border-white/10 flex flex-col gap-8">
           <div className="glass-card p-6 bg-white/[0.02] border border-white/5 rounded-lg relative group shadow-inner">
             <div className="text-[11px] text-[#E5E7EB] font-bold mb-4 flex justify-between items-center tracking-[0.2em] uppercase">
-              <span className="flex items-center gap-2 opacity-60">📊 SECURE LOAD</span>
+              <span className="flex items-center gap-2 opacity-60">📊 STORAGE</span>
               <span className="text-emerald-400 font-mono tracking-normal">{formatSize(files.reduce((acc, f) => acc + f.sizeBytes, 0))}</span>
             </div>
             <div className="h-2 bg-slate-950 rounded-full overflow-hidden mb-4 border border-white/5 p-[1px]">
@@ -428,8 +437,8 @@ export default function HomePage() {
               ></div>
             </div>
             <div className="text-[10px] text-[#6B7280] font-bold uppercase tracking-[0.2em] flex justify-between px-1">
-              <span>BUFFER</span>
-              <span>25.0 GB</span>
+              <span>USED</span>
+              <span>25.0 GB limit</span>
             </div>
           </div>
 
@@ -438,7 +447,7 @@ export default function HomePage() {
             className="w-full flex items-center justify-center gap-4 h-11 text-[11px] font-bold text-[#E5E7EB] hover:text-white transition-all border border-white/10 rounded-[6px] bg-white/5 hover:bg-rose-600 hover:border-rose-500 group"
           >
             <span className="group-hover:rotate-12 transition-transform text-lg">🔌</span>
-            <span className="tracking-[0.3em] uppercase">Terminate</span>
+            <span className="tracking-[0.3em] uppercase">Sign Out</span>
           </button>
         </div>
       </aside>
@@ -455,7 +464,7 @@ export default function HomePage() {
             {listLoading && <div className="absolute bottom-0 left-0 h-[2px] bg-emerald-600 animate-prismatic w-full shadow-[0_0_20px_rgba(34,197,94,0.8)]" />}
 
             <div className="flex items-center gap-8 overflow-hidden max-w-[50%]">
-              <div className="lg:hidden w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center text-xl shadow-lg shrink-0">☁️</div>
+              <div className="lg:hidden w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center text-lg shadow-lg shrink-0">☁️</div>
               <div className="flex items-center gap-4 text-[11px] font-semibold whitespace-nowrap overflow-x-auto no-scrollbar py-2">
                 {crumbs.map((c, i) => (
                   <div key={c.path} className="flex items-center gap-3 shrink-0">
@@ -472,38 +481,40 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-8 ml-auto">
-              <div className="relative group hidden xl:block w-80">
-                <span className="absolute left-5 top-1/2 -translate-y-1/2 text-[#6B7280] group-focus-within:text-emerald-500 transition-all pointer-events-none text-sm z-10">🔍</span>
+            <div className="flex items-center gap-5 ml-auto">
+              <div className="relative group hidden xl:block w-72">
+                <div className="absolute left-0 top-0 bottom-0 w-11 flex items-center justify-center pointer-events-none text-[#6B7280] group-focus-within:text-emerald-500 transition-colors">
+                  <span className="text-sm">🔍</span>
+                </div>
                 <input
                   type="text"
                   placeholder="Search resources..."
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
-                  className="premium-input w-full pl-12"
+                  className="premium-input w-full px-11 text-center bg-[#0F172A]/50 hover:bg-[#0F172A]/80 border-white/[0.05] focus:border-emerald-500/30 text-xs"
                 />
               </div>
 
               <div className="flex gap-4 items-center">
-                <label
-                  className="btn-primary"
-                  style={{ width: '170px', height: '44px' }}
-                >
-                  <span className="text-lg">⚡</span>
-                  <span className="flex-1 text-center text-xs font-bold leading-none">{uploadProgress !== null ? `${uploadProgress}%` : "Upload File"}</span>
-                  <input type="file" className="hidden" onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) uploadFile(file);
-                  }} />
-                </label>
+                <div className="relative h-10 px-6 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 hover:border-white/10 transition-all shadow-lg backdrop-blur-md group cursor-pointer overflow-hidden">
+                  <label className="absolute inset-0 z-10 cursor-pointer flex items-center justify-center opacity-0 w-full h-full">
+                    <input type="file" className="cursor-pointer font-none p-0 m-0 w-full h-full" onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadFile(file);
+                    }} />
+                  </label>
+                  <div className="relative z-0 h-full flex items-center justify-center gap-2.5 pointer-events-none">
+                    <span className="text-lg text-emerald-500 opacity-90 drop-shadow-md group-hover:scale-110 transition-transform flex items-center justify-center h-full">⚡</span>
+                    <span className="text-[11px] font-bold tracking-widest uppercase text-[#E5E7EB] translate-y-px">{uploadProgress !== null ? `${uploadProgress}%` : "Upload File"}</span>
+                  </div>
+                </div>
 
                 <button
                   onClick={() => { const n = prompt("New folder name:"); if (n) { setNewFolderName(n); createFolder(); } }}
-                  className="btn-secondary"
-                  style={{ width: '170px', height: '44px' }}
+                  className="relative h-10 px-6 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 hover:border-white/10 transition-all shadow-lg backdrop-blur-md group cursor-pointer overflow-hidden flex items-center justify-center gap-2.5"
                 >
-                  <span className="text-lg text-emerald-500">📂</span>
-                  <span className="flex-1 text-center text-xs font-bold leading-none">New Folder</span>
+                  <span className="text-lg opacity-90 drop-shadow-md group-hover:scale-110 transition-transform flex items-center justify-center h-full">📂</span>
+                  <span className="text-[11px] font-bold tracking-widest uppercase text-[#E5E7EB] translate-y-px">New Folder</span>
                 </button>
               </div>
             </div>
@@ -513,9 +524,9 @@ export default function HomePage() {
           <section className="px-6 md:px-8 py-8 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-1.5 h-6 bg-emerald-600 rounded-full shadow-[0_0_15px_rgba(34,197,94,0.6)]"></div>
-              <h2 className="text-xl font-bold text-[#E5E7EB] leading-tight">{currentFolder === "/" ? "Primary Node" : currentFolder.split("/").pop()}</h2>
-              <div className="h-4 w-px bg-white/10 mx-2"></div>
-              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#6B7280]">Sector Alpha-9</span>
+              <h2 className="text-xl font-bold text-[#E5E7EB] leading-tight flex items-center gap-3">
+                {currentFolder === "/" ? "My Files" : currentFolder.split("/").pop()}
+              </h2>
             </div>
 
             <div className="flex bg-[#0F172A] p-1 rounded-lg border border-white/5">
@@ -563,17 +574,17 @@ export default function HomePage() {
                     </button>
                   )}
                   <h2 className="text-lg font-bold text-white leading-tight font-heading">
-                    {currentFolder === "/" ? "Primary Repositories" : currentFolder === "/favorites" ? "Pinned Assets" : currentFolder === "/trash" ? "Deprioritized" : "Nested Clusters"}
+                    {currentFolder === "/" ? "Folders" : currentFolder === "/favorites" ? "Favorites" : currentFolder === "/trash" ? "Trash" : "Subfolders"}
                   </h2>
                 </div>
                 <span className="text-[10px] font-bold text-white opacity-20 uppercase tracking-widest">
-                  {folders.length} Nodes
+                  {folders.length} {folders.length === 1 ? 'Folder' : 'Folders'}
                 </span>
               </div>
 
               {folders.length === 0 ? (
                 <div className="h-24 flex flex-col items-center justify-center border border-dashed border-white/10 rounded-lg bg-white/[0.01] text-[#6B7280]">
-                  <p className="text-[#6B7280] font-bold uppercase tracking-widest text-[9px]">Sector Buffer Clear</p>
+                  <p className="text-[#6B7280] font-bold uppercase tracking-widest text-[9px]">No folders yet</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
@@ -609,7 +620,7 @@ export default function HomePage() {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <h2 className="text-lg font-bold text-[#E5E7EB] leading-tight font-heading">
-                    {currentFolder === "/" ? "Data Objects" : "Sector Data"}
+                    {currentFolder === "/" ? "Files" : "Files in this folder"}
                   </h2>
                 </div>
                 <div className="flex bg-[#0F172A] p-1 rounded-lg border border-white/5">
@@ -632,7 +643,7 @@ export default function HomePage() {
               <div className="md:hidden space-y-4">
                 {files.length === 0 ? (
                   <div className="h-32 flex flex-col items-center justify-center border border-dashed border-white/10 rounded-lg bg-white/[0.01]">
-                    <p className="text-[#6B7280] font-bold uppercase tracking-widest text-[9px]">No data packets detected</p>
+                    <p className="text-[#6B7280] font-bold uppercase tracking-widest text-[9px]">No files here yet</p>
                   </div>
                 ) : (
                   files.map(f => (
@@ -661,7 +672,7 @@ export default function HomePage() {
                   <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
                     {files.length === 0 ? (
                       <div className="col-span-full h-48 flex flex-col items-center justify-center border border-dashed border-white/10 rounded-lg bg-white/[0.01]">
-                        <p className="text-[#6B7280] font-bold uppercase tracking-widest text-[9px]">Sector Buffer Clear</p>
+                        <p className="text-[#6B7280] font-bold uppercase tracking-widest text-[9px]">No files uploaded yet</p>
                       </div>
                     ) : (
                       files.map(f => (
@@ -692,7 +703,7 @@ export default function HomePage() {
                     <table className="w-full text-left text-xs border-collapse">
                       <thead>
                         <tr className="text-[#6B7280] font-bold text-[10px] uppercase tracking-[0.2em] border-b border-white/[0.03]">
-                          <th className="pl-6 pr-4 py-5">Resource Name</th>
+                          <th className="pl-6 pr-4 py-5">Name</th>
                           <th className="px-4 py-5">Size</th>
                           <th className="px-4 py-5 text-center">Status</th>
                           <th className="pr-6 pl-4 py-5 text-right">Actions</th>
@@ -702,7 +713,7 @@ export default function HomePage() {
                         {files.length === 0 ? (
                           <tr>
                             <td colSpan={4} className="py-20 text-center text-[#6B7280]">
-                              <p className="text-[10px] font-bold uppercase tracking-[0.2em]">Sector Buffer Empty</p>
+                              <p className="text-[10px] font-bold uppercase tracking-[0.2em]">Folder is empty</p>
                             </td>
                           </tr>
                         ) : (
@@ -738,7 +749,7 @@ export default function HomePage() {
                               </td>
                               <td className="px-4 py-4 text-[11px] text-[#9CA3AF] font-semibold">{formatSize(f.sizeBytes)}</td>
                               <td className="px-4 py-4 text-center">
-                                <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">Secure</span>
+                                <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">Saved</span>
                               </td>
                               <td className="pr-6 pl-4 py-4 text-right">
                                 <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
@@ -793,7 +804,7 @@ export default function HomePage() {
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-8 left-8 right-8 h-20 bg-[#111827]/90 backdrop-blur-3xl border border-white/10 flex items-center justify-around px-6 z-50 shadow-2xl animate-slide-up rounded-[20px]">
         <button onClick={() => setCurrentFolder("/")} className="p-4 text-emerald-400 active:scale-75 transition-all">
-          <span className="text-2xl">📁</span>
+          <span className="text-2xl">📂</span>
         </button>
         <label className="p-5 bg-emerald-600 rounded-full shadow-2xl shadow-emerald-500/40 -translate-y-10 border-[8px] border-[#0B0F14] cursor-pointer active:scale-75 hover:scale-105 transition-all">
           <span className="text-2xl text-white">⚡</span>
@@ -802,7 +813,7 @@ export default function HomePage() {
             if (file) uploadFile(file);
           }} />
         </label>
-        <button onClick={() => signOut()} className="p-4 text-[#6B7280] active:scale-75 transition-all">
+        <button onClick={() => signOut()} className="p-4 text-white opacity-40 hover:opacity-100 transition-opacity">
           <span className="text-2xl">🔌</span>
         </button>
       </nav>
